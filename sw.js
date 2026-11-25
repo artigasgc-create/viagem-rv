@@ -1,6 +1,6 @@
 // Guarda o app no aparelho para abrir sem internet. Ao mudar arquivos, troque a versão.
-const CACHE = 'viagem-rv-v3';
-const FILES = ['./', './index.html', './manifest.webmanifest', './seed.js', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
+const CACHE = 'viagem-rv-v4';
+const FILES = ['./', './index.html', './manifest.webmanifest', './seed.js', './icon-192.png', './icon-512.png', './apple-touch-icon.png', './xlsx.full.min.js'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)));

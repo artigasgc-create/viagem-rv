@@ -167,7 +167,7 @@ function statusBox(){const ov=openVisit(),ld=lastDep(),now=Date.now();
   if(ld&&now-new Date(ld)<16*36e5)return `<div class="status road"><div><div class="small mut">Na estrada desde ${esc(hm(ld))}</div><div class="t" style="margin-top:6px">${esc(dur(now-new Date(ld)))}</div></div><button class="btn pri huge" data-act="arr">Cheguei</button></div>`;
   return `<button class="btn pri huge" style="width:100%;margin:12px 0" data-act="arr">Cheguei</button>`}
 function vHoje(){const w=where(),L=w.L;
-  if(!L.length)return `<div class="card empty">Nenhum dia no roteiro.<br><br><button class="btn pri" data-act="day">Adicionar dia</button></div>`;
+  if(!L.length)return `<div class="card empty">Nenhum dia no roteiro.<br><br><a class="btn pri" href="#roteiro">Importar planilha ou adicionar dia</a></div>`;
   if(w.phase==='post')return `<div class="card"><h2>Viagem encerrada</h2><p class="mut">Vá na aba Arquivo e baixe o relatório completo.</p></div>`+statusBox();
   const d=w.cur||w.next,idx=L.indexOf(d)+1,moving=d.from&&d.to&&d.from!==d.to;
   const head=w.phase==='pre'?`Faltam <b>${w.left}</b> ${w.left===1?'dia':'dias'} · começa ${esc(fd(d.date,{day:'2-digit',month:'long'}))}`:`Dia ${idx} de ${L.length} · ${esc(fd(d.date,{weekday:'long',day:'2-digit',month:'long'}))}`;
@@ -188,7 +188,8 @@ function vHoje(){const w=where(),L=w.L;
 
 function vRoteiro(){const L=days(),t=todayISO();const seq=[];L.forEach(d=>{if(d.from&&!seq.length)seq.push(d.from);if(d.to&&seq[seq.length-1]!==d.to)seq.push(d.to)});
   const full=seq.length>2?'https://www.google.com/maps/dir/?api=1&origin='+encodeURIComponent(seq[0])+'&destination='+encodeURIComponent(seq[seq.length-1])+'&waypoints='+encodeURIComponent(seq.slice(1,-1).slice(0,9).join('|'))+'&travelmode=driving':'';
-  return `<div class="row" style="margin-bottom:6px">${full?`<a class="btn blue" href="${esc(full)}" target="_blank" rel="noopener">Rota completa no Maps</a>`:''}<button class="btn pri" data-act="day">+ Dia</button></div>
+  return `<div class="row" style="margin-bottom:10px"><label class="btn blue">Importar planilha<input type="file" id="impx" accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv" hidden></label><button class="btn" data-act="xlx">Baixar em Excel</button></div>
+  <div class="row" style="margin-bottom:6px">${full?`<a class="btn blue" href="${esc(full)}" target="_blank" rel="noopener">Rota completa no Maps</a>`:''}<button class="btn pri" data-act="day">+ Dia</button></div>
   <p class="small mut">Tempos de estrada são estimativas de carro; o RV leva mais. Cada trecho abre separado no Maps: saída → parada → parada → destino. Paradas sem endereço não viram trecho.</p>
   ${L.map((d,i)=>{const st=stopsOf(d);return `<article class="day ${d.date===t?'now':''}"><div class="d">${esc(fd(d.date,{day:'2-digit'}))}<small>${esc(fd(d.date,{month:'short'}))} · ${esc(fd(d.date,{weekday:'short'}))}</small></div>
    <div><h3>${esc(d.title||'Dia '+(i+1))}</h3>${d.from&&d.to&&d.from!==d.to?`<div class="small mut">${esc(d.from)} → ${esc(d.to)}</div>`:''}${d.drive?`<span class="drive">${esc(d.drive)}</span>`:''}
@@ -281,6 +282,7 @@ form.addEventListener('submit',async ev=>{ev.preventDefault();const o=Object.fro
     if(kind==='arr'){const pl=(o.place||'').trim();if(!pl)return msg('Diga onde você chegou.');const now=iso(Date.now());const ov=openVisit();if(ov){ov.dep=now;ov.depAuto=true}const ph=await storePhoto();S.visits.push({id:uid(),place:pl,arr:now,dep:'',note:(o.note||'').trim(),photo:ph||'',arrGps:gpsFix||null});await save();toast('Chegada em '+pl+' às '+hm(now))}
     if(kind==='vis'){const v=S.visits.find(x=>x.id===editId);if(!v)return;if(o.dep&&o.dep<o.arr)return msg('A saída não pode ser antes da chegada.');v.place=(o.place||'').trim()||v.place;v.arr=o.arr||v.arr;v.dep=o.dep||'';v.note=(o.note||'').trim();v.photo=await storePhoto()||'';await save();toast('Atualizado')}
     if(kind==='day'){if(!o.date)return msg('Informe a data.');const d={id:editId||('d'+o.date.replace(/-/g,'')+uid().slice(-3)),date:o.date,title:o.title.trim(),from:o.from.trim(),to:o.to.trim(),drive:o.drive.trim(),stay:o.stay.trim(),stops:o.stops,notes:o.notes};const i=S.days.findIndex(x=>x.id===d.id);if(i>=0)S.days[i]=d;else S.days.push(d);await save();toast('Dia salvo')}
+    if(kind==='imp'){if(!importDays)return;S.days=importDays;importDays=null;await save();toast('Roteiro atualizado');close();location.hash='#roteiro';return}
     if(kind==='stop'){const d=S.days.find(x=>x.id===editId);const nm=(o.name||'').trim().replace(/\|/g,'/'),ad=(o.addr||'').trim().replace(/\|/g,'/');if(!d||!nm)return msg('Informe o nome.');const L=lines(d.stops);L.splice(Math.min(+o.pos||0,L.length),0,nm+(ad?' || '+ad:''));await saveDay(d,L);toast('Parada adicionada')}
     close()}catch(e){msg('Não foi possível salvar: '+(e&&e.message||e))}});
 
@@ -304,6 +306,39 @@ async function readReceipt(btn){const msg=t=>{const m=$('#fmsg');if(m)m.textCont
     msg(typeof o.total==='number'?'Lido pela IA. Confira o valor e a forma de pagamento antes de salvar.':'Não achei o total; digite o valor.')}
   catch(e){msg(e instanceof TypeError?'Sem internet agora. Salve com a foto e use “Ler cupom” depois, abrindo o gasto.':(e.message||'Erro na leitura.'))}
   if(btn&&btn.isConnected){btn.disabled=false;btn.textContent='Ler cupom com IA'}}
+
+/* ================= roteiro em Excel ================= */
+let XLp=null;const loadXL=()=>XLp||(XLp=new Promise((res,rej)=>{if(window.XLSX)return res(window.XLSX);const s=document.createElement('script');s.src='xlsx.full.min.js';s.onload=()=>res(window.XLSX);s.onerror=()=>{XLp=null;rej(new Error('Não consegui carregar o leitor de planilhas (abra o app com internet uma vez).'))};document.head.appendChild(s)}));
+const norm=s=>String(s??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
+function xlDate(v){if(typeof v==='number'&&v>20000&&v<80000)return new Date(Date.UTC(1899,11,30)+Math.round(v)*864e5).toISOString().slice(0,10);
+  const s=String(v??'').trim();let m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);if(m)return m[1]+'-'+m[2].padStart(2,'0')+'-'+m[3].padStart(2,'0');
+  m=s.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})$/);if(m){const y=m[3].length===2?'20'+m[3]:m[3];return y+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0')}return ''}
+const COLS={date:['data','dia','date'],title:['titulo','title','programacao','descricao'],from:['saindode','origem','saida','de','from'],to:['destino','para','chegada','to'],drive:['estrada','tempo','tempodeestrada','distancia','drive'],stay:['pernoite','dormir','hospedagem','camping','stay'],stops:['paradas','passeios','stops'],notes:['observacoes','obs','notas','notes'],order:['ordem','n','numero','seq'],name:['parada','nome','lugar','local'],addr:['endereco','enderecomaps','maps','address']};
+function mapHead(row){const idx={};row.forEach((c,i)=>{const n=norm(c);for(const[k,al]of Object.entries(COLS))if(idx[k]===undefined&&al.includes(n))idx[k]=i});return idx}
+function findHead(rows){for(let i=0;i<Math.min(rows.length,10);i++){const ix=mapHead(rows[i]);if(ix.date!==undefined)return{i,ix}}return null}
+function parseStopsCell(v){return String(v??'').split(/\r?\n|;/).map(x=>x.trim()).filter(Boolean).map(x=>{const p=x.split(/\s*\|\|?\s*/);return (p[0]||'').trim()+(p[1]&&p[1].trim()?' || '+p[1].trim():'')})}
+async function parseRoteiro(file){const X=await loadXL();const wb=X.read(await file.arrayBuffer(),{type:'array'});
+  const sheets=wb.SheetNames.map(n=>({n,rows:X.utils.sheet_to_json(wb.Sheets[n],{header:1,raw:true,defval:''})}));
+  let dias=null,par=null;for(const sh of sheets){const h=findHead(sh.rows);if(!h)continue;const isStops=h.ix.name!==undefined&&h.ix.title===undefined&&h.ix.to===undefined;if(isStops&&!par)par={...h,rows:sh.rows};else if(!isStops&&!dias)dias={...h,rows:sh.rows}}
+  if(!dias)throw new Error('Não achei a coluna "Data". Use o modelo baixado pelo app.');
+  const g=(r,k,ix)=>ix[k]===undefined?'':String(r[ix[k]]??'').trim();
+  const out=[];for(const r of dias.rows.slice(dias.i+1)){const date=xlDate(r[dias.ix.date]);if(!date)continue;out.push({id:'d'+date.replace(/-/g,''),date,title:g(r,'title',dias.ix),from:g(r,'from',dias.ix),to:g(r,'to',dias.ix),drive:g(r,'drive',dias.ix),stay:g(r,'stay',dias.ix),stops:parseStopsCell(dias.ix.stops===undefined?'':r[dias.ix.stops]).join('\n'),notes:g(r,'notes',dias.ix)})}
+  if(par){const by={};par.rows.slice(par.i+1).forEach((r,k)=>{const date=xlDate(r[par.ix.date]);const nm=g(r,'name',par.ix).replace(/\|/g,'/');if(!date||!nm)return;(by[date]=by[date]||[]).push({o:num(par.ix.order===undefined?k:r[par.ix.order])||k,line:nm+(g(r,'addr',par.ix)?' || '+g(r,'addr',par.ix).replace(/\|/g,'/'):'')})});
+    out.forEach(d=>{if(by[d.date])d.stops=by[d.date].sort((a,b)=>a.o-b.o).map(x=>x.line).join('\n')})}
+  const seen={};const days=out.filter(d=>seen[d.date]?false:(seen[d.date]=1));days.sort((a,b)=>a.date.localeCompare(b.date));if(!days.length)throw new Error('Nenhuma linha com data válida.');return days}
+let importDays=null;
+async function onImportFile(file){try{toast('Lendo planilha…');importDays=await parseRoteiro(file);const ns=importDays.reduce((s,d)=>s+lines(d.stops).length,0);kind='imp';editId='';
+  open(`<h2>Importar roteiro</h2><p>${importDays.length} dias e ${ns} paradas, de ${esc(fd(importDays[0].date,{day:'2-digit',month:'short'}))} a ${esc(fd(importDays[importDays.length-1].date,{day:'2-digit',month:'short',year:'numeric'}))}.</p>
+  <ol class="stops">${importDays.map(d=>`<li><span><b>${esc(fd(d.date,{day:'2-digit',month:'short'}))}</b> ${esc(d.title||d.to||'')}${lines(d.stops).length?` <span class="small mut">${lines(d.stops).length} parada(s)</span>`:''}</span></li>`).join('')}</ol>
+  <p class="small mut">O roteiro atual será substituído por este. Gastos, chegadas e fotos não mudam.</p><div class="row" style="margin-top:16px"><button class="btn pri" type="submit">Substituir roteiro</button><button class="btn" type="button" data-act="close">Cancelar</button></div><p class="small mut" id="fmsg"></p>`)}
+  catch(e){toast(e.message||'Não consegui ler a planilha')}}
+async function exportRoteiro(){const X=await loadXL();const L=days();
+  const d1=[['Data','Título','Saindo de','Destino','Estrada','Pernoite','Observações']].concat(L.map(d=>[d.date.split('-').reverse().join('/'),d.title,d.from,d.to,d.drive,d.stay,d.notes]));
+  const d2=[['Data','Ordem','Parada','Endereço (para a rota)']];L.forEach(d=>stopsOf(d).forEach((s,i)=>d2.push([d.date.split('-').reverse().join('/'),i+1,s.name,s.addr])));
+  const wb=X.utils.book_new();const s1=X.utils.aoa_to_sheet(d1),s2=X.utils.aoa_to_sheet(d2);s1['!cols']=[{wch:11},{wch:34},{wch:30},{wch:30},{wch:24},{wch:34},{wch:40}];s2['!cols']=[{wch:11},{wch:7},{wch:40},{wch:50}];
+  const s3=X.utils.aoa_to_sheet([['Como usar'],['Aba Dias: uma linha por dia. Data no formato dd/mm/aaaa.'],['Aba Paradas: uma linha por parada, na ordem do dia. Com endereço, a parada vira um trecho de rota no Maps.'],['Para atualizar: edite, salve e no app vá em Roteiro → Importar planilha. O roteiro inteiro é substituído; gastos e chegadas ficam.']]);s3['!cols']=[{wch:110}];
+  X.utils.book_append_sheet(wb,s1,'Dias');X.utils.book_append_sheet(wb,s2,'Paradas');X.utils.book_append_sheet(wb,s3,'Como usar');
+  const buf=X.write(wb,{bookType:'xlsx',type:'array'});await deliver(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),'roteiro-viagem-'+stamp()+'.xlsx')}
 
 /* ================= exportação ================= */
 async function deliver(blob,name){const f=new File([blob],name,{type:blob.type});
@@ -363,11 +398,13 @@ document.addEventListener('click',async ev=>{const el=ev.target.closest('[data-a
     if(a==='mv'){const j=i+(+el.dataset.dir);if(j<0||j>=L.length)return;[L[i],L[j]]=[L[j],L[i]]}else L.splice(i,1);await saveDay(d,L)}
   else if(a==='fw'){fWhen=el.dataset.k;render()}
   else if(a==='report'){el.disabled=true;el.textContent='Montando relatório…';try{await deliver(await buildReport(),'relatorio-viagem-'+stamp()+'.html')}catch(e){toast('Erro ao montar relatório')}render()}
+  else if(a==='xlx'){el.disabled=true;try{await exportRoteiro()}catch(e){toast(e.message||'Erro ao gerar planilha')}el.disabled=false}
   else if(a==='csv')deliver(new Blob([csvExp()],{type:'text/csv'}),'gastos-viagem-'+stamp()+'.csv');
   else if(a==='csvv')deliver(new Blob([csvVis()],{type:'text/csv'}),'lugares-tempos-'+stamp()+'.csv');
   else if(a==='backup'){el.disabled=true;el.textContent='Preparando…';try{await backup()}catch(e){toast('Erro no backup')}render()}});
 document.addEventListener('change',ev=>{const t=ev.target;if(t.dataset.act==='fc'){fCat=t.value;render()}
   if(t.id==='restore'&&t.files[0])restore(t.files[0]);
+  if(t.id==='impx'&&t.files[0]){onImportFile(t.files[0]);t.value=''}
   if(t.dataset.cfg){const v=num(t.value);if(t.dataset.cfg==='rate'&&!v){toast('Câmbio inválido');return}S.cfg[t.dataset.cfg]=v;t.blur();save();toast('Atualizado')}});
 document.addEventListener('keydown',ev=>{if(ev.key==='Escape'&&sheet.classList.contains('open'))close()});
 sheet.addEventListener('click',ev=>{if(ev.target===sheet)close()});
