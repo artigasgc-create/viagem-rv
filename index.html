@@ -140,46 +140,51 @@ function legsHTML(d,hoje){const L=legsOf(d);if(!L.length)return '';const nx=L.fi
 const hhmm=m=>m==null||m===''||isNaN(m)?'':String(Math.floor(((m%1440)+1440)%1440/60)).padStart(2,'0')+':'+String(((m%60)+60)%60).padStart(2,'0');
 const durTxt=m=>!m?'':(m<60?m+' min':Math.floor(m/60)+'h'+(m%60?String(m%60).padStart(2,'0'):''));
 const toMin=s=>{s=String(s??'').trim();if(!s)return null;const m=s.match(/^(\d{1,2})(?::|h)(\d{2})?/);return m?(+m[1])*60+(+(m[2]||0)):null};
+const modeOf=l=>{const m=norm(l.mode);if(m.includes('uber'))return 'Uber';if(m.includes('veic')||m.includes('carro'))return 'Veículo';if(!m||m==='rv'||safeLink(l.link))return 'RV';return l.mode};
 const legMode=l=>{const m=norm(l.mode);return m.includes('uber')?'uber':(m==='ape'||m.startsWith('ape'))?'walk':(m.includes('onibus')||m.includes('bus'))?'transit':'drive'};
-const isRV=l=>legMode(l)==='drive'&&!/uber|taxi|transfer|carro/i.test(l.mode||'');
+const isRV=l=>modeOf(l)==='RV';const isCar=l=>['RV','Veículo'].includes(modeOf(l));
 const travelMode=l=>({walk:'walking',transit:'transit'}[legMode(l)]||'driving');
 const uberURL=b=>'https://m.uber.com/ul/?action=setPickup&pickup=my_location&dropoff%5Bformatted_address%5D='+encodeURIComponent(b);
 const safeLink=u=>/^https:\/\//.test(u||'')?u:'';
 const dayMin=(d,s)=>Math.round((new Date(s)-new Date(d.date+'T00:00'))/6e4);
 const isoAt=(d,m)=>iso(new Date(d.date+'T00:00').getTime()+m*6e4);
-function sched(d){const L=d.legs||[];const today=d.date===todayISO();const now=today?dayMin(d,iso(Date.now())):null;let prevP=null,prevE=null,found=false;
-  return L.map((l,i)=>{const st=l.actArr?'done':l.actDep?'going':(!found?(found=true,'next'):'todo');const pDep=l.dep??prevP??0;const pArr=pDep+(l.dur||0);
-    let eDep;if(l.actDep)eDep=dayMin(d,l.actDep);else if(prevE==null)eDep=pDep;else{const stay=Math.max(0,pDep-(prevP??pDep));eDep=l.fixed?Math.max(pDep,prevE):prevE+stay}
-    if(st==='next'&&now!=null&&now>eDep&&(l.fixed?true:true))eDep=Math.max(eDep,now);
-    let eArr=l.actArr?dayMin(d,l.actArr):eDep+(l.dur||0);if(st==='going'&&now!=null)eArr=Math.max(eArr,now);
-    prevP=pArr;prevE=eArr;return{l,i,pDep,pArr,eDep,eArr,st,late:eArr-pArr,dlate:eDep-pDep}})}
+function plannedOf(l,prevP){const t=l.dep;if(l.kind==='comp'&&t!=null)return{pDep:t-(l.dur||0),pArr:t};const pDep=t??prevP??0;return{pDep,pArr:pDep+(l.dur||0)}}
+function sched(d){const L=d.legs||[];const today=d.date===todayISO();const now=today?dayMin(d,iso(Date.now())):null;let prevP=null,prevE=null,prevComp=false,found=false;
+  return L.map((l,i)=>{const st=l.actArr?'done':l.actDep?'going':(!found?(found=true,'next'):'todo');const{pDep,pArr}=plannedOf(l,prevP);
+    let eDep;if(l.actDep)eDep=dayMin(d,l.actDep);else if(prevE==null)eDep=pDep;else if(prevComp||l.kind==='comp')eDep=Math.max(pDep,prevE);else{const stay=Math.max(0,pDep-(prevP??pDep));eDep=prevE+stay}
+    if(st==='next'&&now!=null&&now>eDep)eDep=now;
+    let eArr=l.actArr?dayMin(d,l.actArr):eDep+(l.dur||0);if(st==='going'&&now!=null&&!l.dur)eArr=Math.max(eArr,now);else if(st==='going'&&now!=null)eArr=Math.max(eArr,now);
+    prevP=pArr;prevE=eArr;prevComp=l.kind==='comp';return{l,i,pDep,pArr,eDep,eArr,st,late:eArr-pArr,dlate:eDep-pDep}})}
+
 const lateTag=m=>Math.abs(m)<5?'<span class="tagr ok">no horário</span>':m>0?`<span class="tagr late">atrasado ${esc(durTxt(m))}</span>`:`<span class="tagr ok">adiantado ${esc(durTxt(-m))}</span>`;
 function legGps(l,big){const a=l.fromAddr||l.from,b=l.toAddr||l.to;const g='https://www.google.com/maps/dir/?api=1&origin='+encodeURIComponent(a)+'&destination='+encodeURIComponent(b)+'&travelmode='+travelMode(l)+'&dir_action=navigate';const c=big?'btn':'btn';const o=[];
   if(legMode(l)==='uber')o.push(`<a class="${c}" style="background:#000;color:#fff" href="${esc(uberURL(b))}" target="_blank" rel="noopener">Uber</a>`);
   if(safeLink(l.link))o.push(`<a class="${c} pri" href="${esc(l.link)}" target="_blank" rel="noopener">Sua rota</a>`);
   o.push(`<a class="${c}${safeLink(l.link)?'':' blue'}" href="${esc(g)}" target="_blank" rel="noopener">Maps</a>`);
   if(isRV(l))o.push(`<a class="${c}" style="background:#33ccff;color:#062a3a" href="${esc(wazeURL(b))}" target="_blank" rel="noopener">Waze</a>`);return o.join('')}
-function legRow(d,s,full){const l=s.l;const info=[];info.push(isRV(l)?'RV':(l.mode||'RV'));if(l.dur)info.push(durTxt(l.dur));if(num(l.dist))info.push(f1(num(l.dist))+' mi');if(num(l.cost))info.push(money(num(l.cost)));
-  const plan=`${hhmm(s.pDep)} → ${hhmm(s.pArr)}`;const real=s.st==='done'?`real ${hhmm(s.eDep)} → ${hhmm(s.eArr)}`:(s.st==='going'?`saiu ${hhmm(s.eDep)} · chegada prevista ${hhmm(s.eArr)}`:(Math.abs(s.eDep-s.pDep)>=5?`previsto ${hhmm(s.eDep)} → ${hhmm(s.eArr)}`:''));
-  const act=s.st==='next'?`<button class="btn red" data-act="lgdep" data-id="${esc(d.id)}" data-i="${s.i}">Saí de ${esc(l.from||'origem')}</button>`:s.st==='going'?`<button class="btn pri" data-act="lgarr" data-id="${esc(d.id)}" data-i="${s.i}">Cheguei em ${esc(l.to||'destino')}</button>`:'';
-  return `<div class="lg ${s.st==='next'||s.st==='going'?'next':''} ${s.st==='done'?'done':''}"><div class="tt">${s.st==='done'?'<span style="color:var(--gtxt)">✓</span> ':''}${s.i+1}. ${esc(l.from)} → ${esc(l.to)} ${l.fixed?'<span class="tagr fix">horário fixo</span>':''}</div>
-   <div class="tm"><span class="${real&&s.st!=='todo'?'':''}">Plano ${esc(plan)}</span>${real?` · <b>${esc(real)}</b>`:''} ${s.st!=='todo'||Math.abs(s.late)>=5?lateTag(s.late):''}</div>
-   ${l.fixed&&s.st!=='done'&&s.late>=5?`<div class="small late">Nesse ritmo você chega ${esc(durTxt(s.late))} atrasado a este compromisso.</div>`:''}
-   <div class="small mut">${esc(info.join(' · '))}${full?' · '+esc(l.toAddr||''):''}</div>
-   <div class="acts2">${act}${legGps(l)}<button class="btn" data-act="leg" data-id="${esc(d.id)}" data-i="${s.i}">Editar</button></div></div>`}
+function legTag(l){const p=[modeOf(l)];if(l.dur)p.push(durTxt(l.dur));if(num(l.dist))p.push(f1(num(l.dist))+' mi');if(num(l.cost))p.push(money(num(l.cost)));return p.join(' · ')}
+function legHora(l){return l.dep==null?'':(l.kind==='comp'?`compromisso às ${hhmm(l.dep)}`:`${modeOf(l)} às ${hhmm(l.dep)}`)}
+function legRow(d,s,n){const l=s.l;const a=l.fromAddr||l.from,b=l.toAddr||l.to;const real=l.actDep?`real ${hm(l.actDep)}${l.actArr?' → '+hm(l.actArr):' → …'}`:'';
+  const gps=[];if(modeOf(l)==='Uber')gps.push(`<a class="ib" style="background:#000;color:#fff;display:grid;place-items:center;text-decoration:none" href="${esc(uberURL(b))}" target="_blank" rel="noopener">Uber</a>`);
+  const mapsU=safeLink(l.link)||('https://www.google.com/maps/dir/?api=1&origin='+encodeURIComponent(a)+'&destination='+encodeURIComponent(b)+'&travelmode='+travelMode(l)+'&dir_action=navigate');
+  gps.push(`<a class="ib go" style="display:grid;place-items:center;text-decoration:none" href="${esc(mapsU)}" target="_blank" rel="noopener">Maps</a>`);if(modeOf(l)!=='Uber')gps.push(`<a class="ib" style="background:#33ccff;color:#062a3a;display:grid;place-items:center;text-decoration:none" href="${esc(wazeURL(b))}" target="_blank" rel="noopener">Waze</a>`);
+  return `<div class="leg2" style="align-items:start"><span data-act="leg" data-id="${esc(d.id)}" data-i="${s.i}" style="cursor:pointer">${s.st==='done'?'<b style="color:var(--gtxt)">✓</b> ':''}<b>${s.i+1}.</b> ${esc(l.from)} → <b>${esc(l.to)}${legHora(l)?' ('+esc(legHora(l))+')':''}</b>
+   <br><span class="small mut">${esc(l.toAddr||'')}</span>${real?`<br><span class="small"><b>${esc(real)}</b> ${s.st==='done'?lateTag(s.late):''}</span>`:''}</span>
+   <span style="display:grid;gap:6px;justify-items:end"><span class="sb"><button class="ib" data-act="lmv" data-id="${esc(d.id)}" data-i="${s.i}" data-dir="-1" aria-label="Subir" ${s.i?'':'disabled'}>↑</button><button class="ib" data-act="lmv" data-id="${esc(d.id)}" data-i="${s.i}" data-dir="1" aria-label="Descer" ${s.i<n-1?'':'disabled'}>↓</button><button class="ib" data-act="lrm" data-id="${esc(d.id)}" data-i="${s.i}" aria-label="Excluir">✕</button></span><span class="sb">${gps.join('')}</span><span class="drive" style="margin:0">${esc(legTag(l))}</span></span></div>`}
+
 function dayTotals(d){const L=d.legs||[];const rv=L.filter(isRV);return{mi:rv.reduce((s,l)=>s+num(l.dist),0),rvMin:rv.reduce((s,l)=>s+(l.dur||0),0),cost:L.reduce((s,l)=>s+num(l.cost),0)}}
 function dayStatus(d){const S2=sched(d);const cur=S2.find(s=>s.st==='going')||S2.find(s=>s.st==='next');if(!cur)return S2.length?{done:true,late:S2[S2.length-1].late}:null;return{cur,late:cur.st==='next'?cur.dlate:cur.late}}
 /* odômetro e milhas */
-function odoReadings(){const R=[];(S.odo||[]).forEach(o=>R.push({ts:o.ts,odo:num(o.odo),src:'manual'}));S.visits.forEach(v=>{if(num(v.odo))R.push({ts:v.arr,odo:num(v.odo),src:'check-in'})});const rv=S.rv||{};if(rv.out&&num(rv.out.odo))R.push({ts:rv.out.when||'0',odo:num(rv.out.odo),src:'retirada'});if(rv.in&&num(rv.in.odo))R.push({ts:rv.in.when||'9',odo:num(rv.in.odo),src:'devolução'});return R.sort((a,b)=>String(a.ts).localeCompare(String(b.ts)))}
+function odoReadings(){const R=[];S.visits.forEach(v=>{if(num(v.odo))R.push({ts:v.arr,odo:num(v.odo),src:'abastecimento'})});const rv=S.rv||{};if(rv.out&&num(rv.out.odo))R.push({ts:rv.out.when||'0',odo:num(rv.out.odo),src:'retirada'});if(rv.in&&num(rv.in.odo))R.push({ts:rv.in.when||'9',odo:num(rv.in.odo),src:'devolução'});return R.sort((a,b)=>String(a.ts).localeCompare(String(b.ts)))}
 function milesInfo(date){const R=odoReadings();const start=num(S.rv&&S.rv.out&&S.rv.out.odo)||(R[0]&&R[0].odo)||null;const last=R.length?R[R.length-1].odo:null;const incl=num(S.cfg.milesIncl)||2000;
   const before=R.filter(r=>String(r.ts).slice(0,10)<date).pop();const upto=R.filter(r=>String(r.ts).slice(0,10)<=date).pop();const firstToday=R.find(r=>String(r.ts).slice(0,10)===date);
   const base=before?before.odo:(firstToday?firstToday.odo:null);const today=upto&&base!=null&&String(upto.ts).slice(0,10)===date?upto.odo-base:null;
   const plannedDay=(S.days.find(d=>d.date===date)||{legs:[]});const pd=dayTotals(plannedDay).mi;const pt=S.days.reduce((s,d)=>s+dayTotals(d).mi,0);
   return{start,last,acc:start!=null&&last!=null?last-start:null,incl,today,pd,pt}}
-function milesCard(date){const m=milesInfo(date);const pct=m.acc!=null?m.acc/m.incl*100:null;
-  return `<div class="card"><div class="small mut">Milhas</div><div style="display:flex;gap:18px;flex-wrap:wrap;margin-top:4px"><div><div class="small mut">Hoje</div><b style="font-size:22px">${m.today!=null?esc(f1(m.today)):'—'}</b> <span class="small mut">${m.pd?'planejado '+esc(f1(m.pd)):''}</span></div><div><div class="small mut">Acumulado</div><b style="font-size:22px">${m.acc!=null?esc(f1(m.acc)):'—'}</b> <span class="small mut">de ${esc(f1(m.incl))} incluídas</span></div></div>
-  ${pct!=null?`<div class="meter"><i style="width:${Math.min(100,pct).toFixed(1)}%;${pct>90?'background:var(--red)':''}"></i></div><div class="small ${pct>90?'late':'mut'}" style="margin-top:4px">${m.acc>m.incl?'Excedeu '+esc(f1(m.acc-m.incl))+' mi':'Restam '+esc(f1(m.incl-m.acc))+' mi'}${m.last?' · odômetro '+esc(f1(m.last)):''}</div>`:`<p class="small mut" style="margin:6px 0 0">${m.start==null?'Registre o odômetro na retirada (aba Motorhome) para o app contar as milhas reais.':'Registre o odômetro durante o dia para ver as milhas de hoje.'}</p>`}
-  <button class="btn" style="margin-top:10px;width:100%" data-act="odo">Registrar odômetro</button></div>`}
+function milesCard(date){const m=milesInfo(date);const R=odoReadings();const last=R[R.length-1];
+  return `<div class="card"><div class="small mut">Milhas</div><div style="display:flex;gap:28px;flex-wrap:wrap;margin-top:4px"><div><div class="small mut">Hoje</div><b style="font-size:26px">${m.today!=null?esc(f1(m.today)):'—'}</b></div><div><div class="small mut">Acumulado</div><b style="font-size:26px">${m.acc!=null?esc(f1(m.acc)):'—'}</b></div></div>
+  ${m.acc!=null&&last?`<div class="small mut" style="margin-top:4px">até ${esc(last.src)} de ${esc(fd(String(last.ts),{day:'2-digit',month:'short'}))} · ${m.acc>m.incl?'excedeu '+esc(f1(m.acc-m.incl)):'restam '+esc(f1(m.incl-m.acc))} de ${esc(f1(m.incl))}</div>`:''}</div>`}
+
 /* cotação do dia (USD→BRL, comercial) */
 const ymd=s=>s.replace(/-/g,'');
 async function fetchRate(date){S.rates=S.rates||{};if(S.rates[date])return S.rates[date];const t=todayISO();const q=!date||date>t?'latest':date;
@@ -243,41 +248,44 @@ function statusBox(){const ov=openVisit(),ld=lastDep(),now=Date.now();
   if(ov)return `<div class="status at"><div><div class="small mut">Você está em</div><b style="font-size:18px">${esc(ov.place)}</b><div class="t" style="margin-top:6px">${esc(dur(now-new Date(ov.arr)))}</div><div class="small mut">desde ${esc(hm(ov.arr))}</div></div><div style="display:grid;gap:8px"><button class="btn red huge" data-act="dep">Saí</button><button class="btn" data-act="expv" data-id="${esc(ov.id)}">+ Gasto aqui</button></div></div>`;
   if(ld&&now-new Date(ld)<16*36e5)return `<div class="status road"><div><div class="small mut">Na estrada desde ${esc(hm(ld))}</div><div class="t" style="margin-top:6px">${esc(dur(now-new Date(ld)))}</div></div><button class="btn pri huge" data-act="arr">Fazer check-in</button></div>`;
   return `<button class="btn pri huge" style="width:100%;margin:12px 0" data-act="arr">Fazer check-in</button>`}
+function curLeg(d){if((d.legs||[]).length){const sc=sched(d);return sc.find(s=>s.st==='going')||sc.find(s=>s.st==='next')||null}return null}
+function trechoCard(d,w){const hasL=(d.legs||[]).length>0;
+  if(!hasL){const t=d.trip||{};return `<div class="card"><div class="small">Trecho atual</div><h3 style="margin:4px 0 12px">${esc(d.title||d.to||'—')}</h3>${t.actDep?`<p class="small" style="margin:0 0 8px"><b>Início ${esc(hm(t.actDep))}${t.actArr?' · Término '+esc(hm(t.actArr)):''}</b></p>`:''}
+   <div class="two"><button class="btn" data-act="dini" data-id="${esc(d.id)}" ${t.actDep?'disabled':''}>Início</button><button class="btn" data-act="dfim" data-id="${esc(d.id)}" ${!t.actDep||t.actArr?'disabled':''}>Término</button></div></div>`}
+  const s=curLeg(d);if(!s)return `<div class="card"><div class="small">Trecho atual</div><h3 style="margin:4px 0 6px">Dia concluído</h3><p class="small mut" style="margin:0">Todos os trechos de hoje foram terminados.</p></div>`;
+  const l=s.l;const today=d.date===w.t;const info=s.st==='going'?`Início ${hm(l.actDep)} · chegada prevista ${hhmm(s.eArr)}`:(l.kind==='comp'?`Compromisso às ${hhmm(l.dep)} · sair até ${hhmm(s.pDep)}`:`Saída prevista ${hhmm(s.pDep)}${l.dur?' · chegada '+hhmm(s.pArr):''}`);
+  const warn=l.kind==='comp'&&today&&s.eArr-s.pArr>=5?`<div class="small late" style="margin-top:4px">Nesse ritmo você chega ${esc(durTxt(s.eArr-s.pArr))} atrasado ao compromisso.</div>`:'';
+  return `<div class="card"><div class="small">Trecho atual · ${s.i+1} de ${d.legs.length}</div><h3 style="margin:4px 0 4px">${esc(l.from)} → ${esc(l.to)}</h3><div class="small">${esc(info)} ${today?(s.st==='going'?lateTag(s.late):lateTag(s.dlate)):''}</div>${warn}
+   <div class="small mut" style="margin-top:2px">${esc(legTag(l))}${l.toAddr?' · '+esc(l.toAddr):''}</div>
+   <div class="row" style="margin-top:10px">${legGps(l)}</div>
+   <div class="two" style="margin-top:10px"><button class="btn ${s.st==='next'?'red':''}" data-act="lgdep" data-id="${esc(d.id)}" data-i="${s.i}" ${s.st==='going'?'disabled':''}>Início</button><button class="btn ${s.st==='going'?'pri':''}" data-act="lgarr" data-id="${esc(d.id)}" data-i="${s.i}" ${s.st!=='going'?'disabled':''}>Término</button></div></div>`}
 function vHoje(){const w=where(),L=w.L;
   if(!L.length)return `<div class="card empty">Nenhum dia no roteiro.<br><br><a class="btn pri" href="#roteiro">Importar planilha ou adicionar dia</a></div>`;
-  if(w.phase==='post')return `<div class="card"><h2>Viagem encerrada</h2><p class="mut">Toque no ícone de arquivo no topo e baixe o relatório completo.</p></div>`+statusBox();
-  const d=w.cur||w.next,idx=L.indexOf(d)+1,moving=d.from&&d.to&&d.from!==d.to;const hasL=(d.legs||[]).length>0;
+  if(w.phase==='post')return `<div class="card"><h2>Viagem encerrada</h2><p class="mut">Toque no ícone de download no topo e baixe o relatório completo.</p></div>`;
+  const d=w.cur||w.next,idx=L.indexOf(d)+1;const s=curLeg(d);
   const head=w.phase==='pre'?`Faltam <b>${w.left}</b> ${w.left===1?'dia':'dias'} · começa ${esc(fd(d.date,{day:'2-digit',month:'long'}))}`:`Dia ${idx} de ${L.length} · ${esc(fd(d.date,{weekday:'long',day:'2-digit',month:'long'}))}`;
-  const te=S.exp.filter(e=>e.date===w.t);const st=stopsOf(d);
-  const bk=S.cfg.lastBackup?Math.floor((Date.now()-new Date(S.cfg.lastBackup))/864e5):null;
-  const sc=hasL?sched(d):[];const ds=hasL?dayStatus(d):null;const cur=ds&&ds.cur;
+  const te=S.exp.filter(e=>e.date===w.t);const bk=S.cfg.lastBackup?Math.floor((Date.now()-new Date(S.cfg.lastBackup))/864e5):null;const ov=openVisit();
+  const city=s?s.l.to:((d.legs||[]).length?(d.stay||d.toName||'—'):(d.to||d.stay||d.title||'—'));
   return `<p class="mut" style="margin:0 0 10px">${head}</p>
-  ${w.phase==='on'&&(bk===null||bk>=2)&&(S.visits.length||S.exp.length>3)?`<div class="warn">${bk===null?'Você ainda não fez backup.':'Último backup há '+bk+' dias.'} Os dados ficam só neste iPhone. <a href="#arquivo">Fazer backup</a></div>`:''}
-  <div class="signwrap"><div class="sign"><div><div class="k">${cur?'Próximo destino':(moving?'Próximo destino':'Hoje em')}</div><div class="dest">${esc(cur?cur.l.to:(d.toName||d.to||d.title||'—'))}</div><div class="meta">${cur?esc((cur.st==='going'?'chegada prevista ':'saída ')+hhmm(cur.st==='going'?cur.eArr:cur.eDep)):esc(d.drive||'')}${d.stay?` · Pernoite: ${esc(d.stay)}`:''}</div></div>
+  <div class="signwrap"><div class="sign"><div><div class="k">${s?(s.st==='going'?'Indo para':'Próximo destino'):'Hoje em'}</div><div class="dest">${esc(city)}</div></div>
   <svg viewBox="0 0 80 80" aria-hidden="true"><path d="M18 62 L56 24" stroke="#fff" stroke-width="10"/><path d="M30 20 H60 V50" fill="none" stroke="#fff" stroke-width="10"/></svg></div><i class="post a"></i><i class="post b"></i></div>
+  ${ov?statusBox():`<button class="btn pri huge" style="width:100%;margin:12px 0" data-act="arr">Fazer check-in</button>`}
+  <button class="btn red" style="width:100%;min-height:54px;font-size:18px" data-act="exp">+ Gasto</button>
   ${(()=>{const end=w.t+'T23:59';const due=(S.notes||[]).filter(n=>n.when&&!n.done&&n.when<=end).sort((a,b)=>a.when.localeCompare(b.when));return due.length?`<div class="card" style="border-color:var(--red)"><h3>Lembretes de hoje</h3>${due.map(noteItem).join('')}</div>`:''})()}
-  ${hasL&&cur?`<div class="card" style="border-color:var(--blue)"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap"><h3>Cronograma</h3>${w.phase==='on'&&d.date===w.t?lateTag(ds.late):''}</div>${legRow(d,cur,true)}</div>`:''}
-  ${statusBox()}
-  <button class="btn red" style="width:100%" data-act="exp">+ Gasto</button>
+  ${w.phase==='on'&&(bk===null||bk>=2)&&(S.visits.length||S.exp.length>3)?`<div class="warn">${bk===null?'Você ainda não fez backup.':'Último backup há '+bk+' dias.'} Os dados ficam só neste iPhone. <a href="#arquivo">Fazer backup</a></div>`:''}
+  ${trechoCard(d,w)}
   ${milesCard(w.t)}
-  <div class="card"><h3>${esc(d.title||'Programação')}</h3>
-   ${hasL?sc.map(s=>legRow(d,s,false)).join('')+`<button class="btn" style="margin-top:10px" data-act="leg" data-id="${esc(d.id)}" data-i="-1">+ Trecho</button>`:`${moving?`<p class="mut small" style="margin:4px 0 0">${esc(d.from)} → ${esc(d.to)}</p>`:''}
-   ${st.length?`<ul class="stops">${st.map(s=>{const v=visitOf(s.name,d.date);return `<li><span>${v?'<b style="color:var(--gtxt)">✓</b> ':''}${esc(s.name)}${v?` <span class="small mut">${esc(hm(v.arr))}${v.dep?' · '+esc(dur(ms(v.arr,v.dep))):' · agora'}</span>`:''}</span>${v?'':`<button class="ib go" data-act="arrq" data-place="${esc(s.name)}">Cheguei</button>`}</li>`}).join('')}</ul>`:''}
-   ${legsHTML(d,false)}<div class="row" style="margin-top:10px"><button class="btn" data-act="stop" data-id="${esc(d.id)}">+ Parada</button><button class="btn" data-act="leg" data-id="${esc(d.id)}" data-i="-1">+ Trecho</button></div>`}
-   ${d.notes?`<p class="small mut" style="white-space:pre-line">${esc(d.notes)}</p>`:''}
-   <div class="row" style="margin-top:10px"><button class="btn" data-act="day" data-id="${esc(d.id)}">Editar dia</button></div></div>
-  ${w.next&&w.cur?`<p class="mut small">Amanhã: <b>${esc(w.next.title||w.next.to)}</b>${w.next.drive?' · '+esc(w.next.drive):''}</p>`:''}
   <div class="card"><div class="mut small">Gasto hoje</div><div class="big">${esc(money(te.reduce((s,e)=>s+usd(e),0)))}</div><div class="mut small">${te.length} lançamento(s) · viagem ${esc(money(S.exp.reduce((s,e)=>s+usd(e),0)))}</div></div>`}
 
 function vRoteiro(){const L=days(),t=todayISO();const mi=L.reduce((s,d)=>s+dayTotals(d).mi,0),c=L.reduce((s,d)=>s+dayTotals(d).cost,0),incl=num(S.cfg.milesIncl)||2000;
-  return `${mi||c?`<div class="card"><div class="small mut">Planejado no roteiro</div><b style="font-size:20px">${esc(f1(mi))} mi de RV</b> <span class="small ${mi>incl*.85?'late':'mut'}">de ${esc(f1(incl))} incluídas${mi>incl*.85?' — margem apertada':''}</span>${c?`<div class="small">Uber/transporte previsto: <b>${esc(money(c))}</b></div>`:''}<div class="meter"><i style="width:${Math.min(100,mi/incl*100).toFixed(1)}%;${mi>incl*.85?'background:var(--red)':''}"></i></div></div>`:''}
-  <div class="row" style="margin-bottom:6px"><button class="btn pri" data-act="day">+ Dia</button></div>
-  ${L.map((d,i)=>{const st=stopsOf(d);const hasL=(d.legs||[]).length>0;const T=dayTotals(d);return `<article class="day ${d.date===t?'now':''}"><div class="d">${esc(fd(d.date,{day:'2-digit'}))}<small>${esc(fd(d.date,{month:'short'}))} · ${esc(fd(d.date,{weekday:'short'}))}</small></div>
-   <div><h3>${esc(d.title||'Dia '+(i+1))}</h3>${hasL?`<div class="small mut">${T.mi?'RV '+esc(f1(T.mi))+' mi · '+esc(durTxt(T.rvMin)):''}${T.mi&&T.cost?' · ':''}${T.cost?'transporte '+esc(money(T.cost)):''}</div>`:(d.from&&d.to&&d.from!==d.to?`<div class="small mut">${esc(d.from)} → ${esc(d.to)}</div>`:'')}${!hasL&&d.drive?`<span class="drive">${esc(d.drive)}</span>`:''}
-   ${hasL?sched(d).map(s=>legRow(d,s,false)).join(''):`${st.length?`<ol class="stops">${st.map((s,j)=>{const v=visitOf(s.name,d.date);return `<li><span>${v?'<b style="color:var(--gtxt)">✓</b> ':''}${esc(s.name)}${s.addr?' <span class="tag">na rota</span>':''}${v&&v.dep?` <span class="small mut">${esc(dur(ms(v.arr,v.dep)))}</span>`:''}</span><span class="sb"><button class="ib" data-act="mv" data-id="${esc(d.id)}" data-i="${j}" data-dir="-1" aria-label="Subir" ${j?'':'disabled'}>↑</button><button class="ib" data-act="mv" data-id="${esc(d.id)}" data-i="${j}" data-dir="1" aria-label="Descer" ${j<st.length-1?'':'disabled'}>↓</button><button class="ib" data-act="rm" data-id="${esc(d.id)}" data-i="${j}" aria-label="Remover">✕</button></span></li>`}).join('')}</ol>`:''}${legsHTML(d,false)}`}
-   ${d.stay?`<div class="small" style="margin-top:6px"><b>Pernoite:</b> ${esc(d.stay)}</div>`:''}${d.notes?`<div class="small mut" style="white-space:pre-line;margin-top:4px">${esc(d.notes)}</div>`:''}
+  return `<button class="btn pri" style="width:100%;min-height:54px;font-size:18px;margin-bottom:6px" data-act="day">+ Dia</button>
+  ${L.map((d,i)=>{const st=stopsOf(d);const hasL=(d.legs||[]).length>0;return `<article class="day ${d.date===t?'now':''}"><div class="d">${esc(fd(d.date,{day:'2-digit'}))}<small>${esc(fd(d.date,{month:'short'}))} · ${esc(fd(d.date,{weekday:'short'}))}</small></div>
+   <div><h3>${esc(d.title||'Dia '+(i+1))}</h3>${d.notes?`<div class="small mut" style="white-space:pre-line;margin-top:4px">${esc(d.notes)}</div>`:''}
+   ${hasL?`<div style="margin-top:8px">${sched(d).map(s=>legRow(d,s,d.legs.length)).join('')}</div>`:`${st.length?`<ol class="stops">${st.map((s,j)=>`<li><span>${esc(s.name)}${s.addr?' <span class="tag">na rota</span>':''}</span><span class="sb"><button class="ib" data-act="mv" data-id="${esc(d.id)}" data-i="${j}" data-dir="-1" aria-label="Subir" ${j?'':'disabled'}>↑</button><button class="ib" data-act="mv" data-id="${esc(d.id)}" data-i="${j}" data-dir="1" aria-label="Descer" ${j<st.length-1?'':'disabled'}>↓</button><button class="ib" data-act="rm" data-id="${esc(d.id)}" data-i="${j}" aria-label="Remover">✕</button></span></li>`).join('')}</ol>`:''}${legsHTML(d,false)}`}
+   ${d.stay?`<div class="small" style="margin-top:6px"><b>Pernoite:</b> ${esc(d.stay)}</div>`:''}
    <div class="acts"><button class="btn" data-act="leg" data-id="${esc(d.id)}" data-i="-1">+ Trecho</button>${hasL?'':`<button class="btn" data-act="stop" data-id="${esc(d.id)}">+ Parada</button>`}<button class="btn" data-act="day" data-id="${esc(d.id)}">Editar dia</button></div></div></article>`}).join('')||'<div class="empty">Sem dias.</div>'}
-  <div class="card"><h3>Planilha do roteiro</h3><p class="small mut">Importe a sua planilha de trechos (Data, Origem, endereço, Destino, endereço, Saída, Tempo, Chegada, Rota Maps, Custo, Distância). Só as datas que estão na planilha são atualizadas; as outras ficam como estão.</p><div class="row"><label class="btn blue">Importar planilha<input type="file" id="impx" accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv" hidden></label><button class="btn" data-act="xlx">Baixar em Excel</button></div></div>`}
+  ${mi||c?`<div class="card"><div class="small mut">Planejado no roteiro</div><b style="font-size:20px">${esc(f1(mi))} mi de RV</b> <span class="small ${mi>incl*.85?'late':'mut'}">de ${esc(f1(incl))} incluídas${mi>incl*.85?' — margem apertada':''}</span>${c?`<div class="small">Uber/transporte previsto: <b>${esc(money(c))}</b></div>`:''}<div class="meter"><i style="width:${Math.min(100,mi/incl*100).toFixed(1)}%;${mi>incl*.85?'background:var(--red)':''}"></i></div></div>`:''}
+  <div class="card"><h3>Planilha do roteiro</h3><p class="small mut">Colunas: Data, Hora, Tipo (Prevista ou Compromisso), Tempo, Distância, Partida, Endereço da partida, Destino, Endereço do destino, Como (RV, Uber ou Veículo), Custo previsto, Rota Maps. Só as datas que estão na planilha são atualizadas.</p><div class="row"><label class="btn blue">Importar planilha<input type="file" id="impx" accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv" hidden></label><button class="btn" data-act="xlx">Baixar em Excel</button></div></div>`}
 
 let fCat='all',fWhen='all';
 function totals(list){const tot=list.reduce((s,e)=>s+usd(e),0);const by=CATS.map(c=>[c[1],list.filter(e=>e.cat===c[0]).reduce((s,e)=>s+usd(e),0),c[2]]).filter(x=>x[1]>0).sort((a,b)=>b[1]-a[1]);
@@ -396,22 +404,27 @@ function openDay(id){const d=S.days.find(x=>x.id===id)||{};kind='day';editId=d.i
   <label class="f" for="dto">Destino final do dia (endereço)</label><input id="dto" name="to" value="${esc(d.to||'')}" placeholder="Ex.: Kia Center, Orlando, FL">
   <label class="f" for="dn">Observações</label><textarea id="dn" name="notes">${esc(d.notes||'')}</textarea>${foot(!!d.id)}`)}
 const ptRow=s=>`<div class="pt"><input name="pn" placeholder="Nome (ex.: Casa da Dani)" value="${esc(s.name)}"><button type="button" class="ib" data-act="delpt" aria-label="Remover ponto">✕</button><input name="pa" placeholder="Endereço para o GPS (opcional)" value="${esc(s.addr)}"></div>`;
-const MODES=['RV','Uber','A pé','Ônibus','Carro alugado','Outro'];let legIdx=-1;
-function openLeg(id,i){const d=S.days.find(x=>x.id===id);if(!d)return;kind='leg';editId=id;legIdx=+i;const L=d.legs||[];const prev=L[L.length-1]||{};const l=legIdx>=0?L[legIdx]:{from:prev.to||'',fromAddr:prev.toAddr||'',mode:'RV'};
-  const mo=MODES.includes(l.mode)?l.mode:(l.mode?'Outro':'RV');const tAct=s=>s?hm(s):'';
-  open(`<h2>${legIdx>=0?'Editar trecho':'Novo trecho'}</h2><p class="mut small" style="margin:4px 0 0">${esc(fd(d.date,{weekday:'long',day:'2-digit',month:'long'}))}</p>
-  <div class="two"><div><label class="f" for="lf">De</label><input id="lf" name="from" value="${esc(l.from||'')}"></div><div><label class="f" for="lt">Para</label><input id="lt" name="to" value="${esc(l.to||'')}"></div></div>
-  <label class="f" for="lfa">Endereço de saída</label><input id="lfa" name="fromAddr" value="${esc(l.fromAddr||'')}">
-  <label class="f" for="lta">Endereço de chegada</label><input id="lta" name="toAddr" value="${esc(l.toAddr||'')}">
-  <div class="two"><div><label class="f" for="ld">Saída planejada</label><input id="ld" name="dep" type="time" value="${esc(hhmm(l.dep))}"></div><div><label class="f" for="lu">Tempo (h:mm)</label><input id="lu" name="dur" value="${esc(l.dur?Math.floor(l.dur/60)+':'+String(l.dur%60).padStart(2,'0'):'')}" placeholder="1:30"></div></div>
-  <label class="chip" style="margin-top:12px"><input type="checkbox" name="fixed" ${l.fixed?'checked':''}>Horário fixo (compromisso: não sai antes do planejado e o app avisa se for atrasar)</label>
+const MODES=['RV','Uber','Veículo'];let legIdx=-1;
+function openLeg(id,i){const d=S.days.find(x=>x.id===id);if(!d)return;kind='leg';editId=id;legIdx=+i;const L=d.legs||[];const prev=L[L.length-1]||{};const l=legIdx>=0?L[legIdx]:{from:prev.to||'',fromAddr:prev.toAddr||'',mode:'RV',kind:'prev'};
+  const mo=modeOf(l);const tAct=s=>s?hm(s):'';const ro=(n,v,lab)=>`<label class="chip"><input type="radio" name="${n}" value="${v}" ${((n==='kind'?(l.kind||'prev'):mo)===v)?'checked':''}>${lab}</label>`;
+  open(`<h2>${legIdx>=0?'Editar trecho':'Novo trecho'}</h2>
+  <div class="two"><div><label class="f" for="lda">Data</label><input id="lda" name="date" type="date" value="${esc(d.date)}"></div><div><label class="f" for="ld">Hora</label><input id="ld" name="dep" type="time" value="${esc(hhmm(l.dep))}"></div></div>
+  <div class="chips" style="margin-top:8px">${ro('kind','prev','Prevista (saída)')}${ro('kind','comp','Compromisso (chegada)')}</div>
+  <div class="two"><div><label class="f" for="lu">Tempo estimado (h:mm)</label><input id="lu" name="dur" value="${esc(l.dur?Math.floor(l.dur/60)+':'+String(l.dur%60).padStart(2,'0'):'')}" placeholder="1:30"></div><div><label class="f" for="ldi">Distância (mi)</label><input id="ldi" name="dist" inputmode="decimal" value="${num(l.dist)?esc(String(l.dist).replace('.',',')):''}"></div></div>
+  <label class="f" for="lf">Local de partida</label><input id="lf" name="from" value="${esc(l.from||'')}">
+  <label class="f" for="lfa">Endereço da partida</label><input id="lfa" name="fromAddr" value="${esc(l.fromAddr||'')}">
+  <label class="f" for="lt">Destino</label><input id="lt" name="to" value="${esc(l.to||'')}">
+  <label class="f" for="lta">Endereço do destino</label><input id="lta" name="toAddr" value="${esc(l.toAddr||'')}">
   <div class="two"><div><label class="f" for="lad">Saída real</label><input id="lad" name="actDep" type="time" value="${esc(tAct(l.actDep))}"></div><div><label class="f" for="laa">Chegada real</label><input id="laa" name="actArr" type="time" value="${esc(tAct(l.actArr))}"></div></div>
-  <div class="two"><div><label class="f" for="lm">Como</label><select id="lm" name="mode">${MODES.map(m=>`<option ${m===mo?'selected':''}>${m}</option>`).join('')}</select></div><div><label class="f" for="lmo">Detalhe (se Outro)</label><input id="lmo" name="modeTxt" value="${esc(mo==='Outro'?l.mode:'')}"></div></div>
-  <div class="two"><div><label class="f" for="lc">Custo previsto (US$)</label><input id="lc" name="cost" inputmode="decimal" value="${num(l.cost)?esc(String(l.cost).replace('.',',')):''}"></div><div><label class="f" for="ldi">Distância (mi)</label><input id="ldi" name="dist" inputmode="decimal" value="${num(l.dist)?esc(String(l.dist).replace('.',',')):''}"></div></div>
-  <label class="f" for="ll">Link da sua rota no Google Maps</label><input id="ll" name="link" value="${esc(l.link||'')}" placeholder="https://maps.app.goo.gl/...">${foot(legIdx>=0)}`)}
+  <p class="small mut" style="margin:4px 0 0">Preenchidas pelos botões Início e Término na aba Hoje. Corrija aqui se precisar.</p>
+  <label class="f">Como?</label><div class="chips">${MODES.map(m=>ro('mode',m,m)).join('')}${MODES.includes(mo)?'':ro('mode',mo,mo)}</div>
+  <label class="f" for="lc">Custo previsto (US$)</label><input id="lc" name="cost" inputmode="decimal" value="${num(l.cost)?esc(String(l.cost).replace('.',',')):''}">
+  <label class="f" for="ll">Link da rota no Google Maps (opcional)</label><input id="ll" name="link" value="${esc(l.link||'')}" placeholder="https://maps.app.goo.gl/...">${foot(legIdx>=0)}`)}
+
+function retitle(d){const names=[];(d.legs||[]).forEach(l=>{[l.from,l.to].forEach(n=>{if(n&&names[names.length-1]!==n)names.push(n)})});return names.slice(0,6).join(' → ')}
 function openOdo(){kind='odo';editId='';open(`<h2>Registrar odômetro</h2><label class="f" for="oo">Odômetro agora (milhas)</label><input id="oo" name="odo" inputmode="numeric" placeholder="Ex.: 12450"><label class="f" for="ot">Quando</label><input id="ot" name="ts" type="datetime-local" value="${esc(iso(Date.now()))}">${foot(false)}`);setTimeout(()=>{const x=$('#oo');if(x)x.focus()},60)}
 async function legAct(id,i,what){const d=S.days.find(x=>x.id===id);if(!d||!d.legs||!d.legs[i])return;const l=d.legs[i];const now=iso(Date.now());
-  if(what==='dep'){l.actDep=now;const ov=openVisit();if(ov){ov.dep=now;ov.depAuto=false}await save();const s=sched(d)[i];toast('Saída de '+(l.from||'origem')+' às '+hm(now)+(Math.abs(s.dlate)>=5?(s.dlate>0?' · atrasado ':' · adiantado ')+durTxt(Math.abs(s.dlate)):' · no horário'));const g=await gps();if(g){l.depGps=g;await save()}}
+  if(what==='dep'){l.actDep=now;const ov=openVisit();if(ov){ov.dep=now;ov.depAuto=false}await save();const s=sched(d)[i];toast('Início às '+hm(now)+(Math.abs(s.dlate)>=5?(s.dlate>0?' · atrasado ':' · adiantado ')+durTxt(Math.abs(s.dlate)):' · no horário'));const g=await gps();if(g){l.depGps=g;await save()}}
   else{l.actArr=now;const v=await arrive(l.to||l.toAddr);if(v){l.visit=v.id;await save()}}}
 function openStop(id){const d=S.days.find(x=>x.id===id);if(!d)return;kind='stop';editId=id;const st=stopsOf(d);
   open(`<h2>Nova parada</h2><p class="mut small" style="margin:4px 0 0">${esc(fd(d.date,{weekday:'long',day:'2-digit',month:'long'}))} · ${esc(d.title||'')}</p>
@@ -430,9 +443,11 @@ form.addEventListener('submit',async ev=>{ev.preventDefault();const o=Object.fro
     if(kind==='arr'){const ty=o.type||'';const pl=(o.place||'').trim()||typeName(ty);if(!pl)return msg('Escolha o tipo de parada ou escreva o nome.');const now=iso(Date.now());const ov=openVisit();if(ov){ov.dep=now;ov.depAuto=true}const ph=await storePhoto();S.visits.push({id:uid(),place:pl,type:ty,odo:num(o.odo)||null,arr:now,dep:'',note:(o.note||'').trim(),photo:ph||'',arrGps:gpsFix||null});await save();toast('Check-in: '+pl+' às '+hm(now)+(gpsFix?'':' (sem GPS)'))}
     if(kind==='vis'){const v=S.visits.find(x=>x.id===editId);if(!v)return;if(o.dep&&o.dep<o.arr)return msg('A saída não pode ser antes da chegada.');v.place=(o.place||'').trim()||v.place;v.arr=o.arr||v.arr;v.dep=o.dep||'';v.note=(o.note||'').trim();v.type=o.type||'';v.odo=num(o.odo)||null;v.photo=await storePhoto()||'';await save();toast('Atualizado')}
     if(kind==='day'){if(!o.date)return msg('Informe a data.');const F=new FormData(form),pn=F.getAll('pn'),pa=F.getAll('pa');const stops=pn.map((n,i)=>{const nm=String(n).trim().replace(/\|/g,'/'),ad=String(pa[i]||'').trim().replace(/\|/g,'/');return nm||ad?(nm||ad)+(ad?' || '+ad:''):''}).filter(Boolean).join('\n');const d={id:editId||('d'+o.date.replace(/-/g,'')+uid().slice(-3)),date:o.date,title:o.title.trim(),from:o.from.trim(),to:o.to.trim(),drive:o.drive.trim(),stay:o.stay.trim(),stops,notes:o.notes};const i=S.days.findIndex(x=>x.id===d.id);if(i>=0)S.days[i]=d;else S.days.push(d);await save();toast('Dia salvo')}
-    if(kind==='leg'){const d=S.days.find(x=>x.id===editId);if(!d)return;if(!(o.to||o.toAddr).trim())return msg('Informe o destino.');const mode=o.mode==='Outro'?(o.modeTxt||'Outro').trim():o.mode;const old=legIdx>=0?d.legs[legIdx]:{};
-      const at=t=>{const m=toMin(t);return m==null?'':isoAt(d,m)};const l={...old,from:o.from.trim(),fromAddr:o.fromAddr.trim(),to:o.to.trim(),toAddr:o.toAddr.trim(),dep:toMin(o.dep),dur:toMin(o.dur),mode,link:safeLink((o.link||'').trim()),cost:num(o.cost)||0,dist:num(o.dist)||0,fixed:!!o.fixed,actDep:at(o.actDep),actArr:at(o.actArr)};
-      d.legs=d.legs||[];if(legIdx>=0)d.legs[legIdx]=l;else{d.legs.push(l);d.legs.sort((a,b)=>(a.dep??9999)-(b.dep??9999))}await save();toast('Trecho salvo');close();return}
+    if(kind==='leg'){const d=S.days.find(x=>x.id===editId);if(!d)return;if(!(o.to||o.toAddr).trim())return msg('Informe o destino.');const old=legIdx>=0?d.legs[legIdx]:{};const nd=o.date||d.date;
+      let tgt=S.days.find(x=>x.date===nd);if(!tgt){tgt={id:'d'+nd.replace(/-/g,'')+uid().slice(-3),date:nd,title:'',stops:'',legs:[]};S.days.push(tgt)}
+      const at=t=>{const m=toMin(t);return m==null?'':isoAt(tgt,m)};const l={...old,from:o.from.trim(),fromAddr:o.fromAddr.trim(),to:o.to.trim(),toAddr:o.toAddr.trim(),dep:toMin(o.dep),kind:o.kind==='comp'?'comp':'prev',dur:toMin(o.dur),mode:o.mode||'RV',link:safeLink((o.link||'').trim()),cost:num(o.cost)||0,dist:num(o.dist)||0,actDep:at(o.actDep),actArr:at(o.actArr)};delete l.fixed;
+      d.legs=d.legs||[];if(legIdx>=0)d.legs.splice(legIdx,1);tgt.legs=tgt.legs||[];if(legIdx>=0&&tgt===d)tgt.legs.splice(legIdx,0,l);else{tgt.legs.push(l);tgt.legs.sort((a,b)=>(plannedOf(a).pDep??9999)-(plannedOf(b).pDep??9999))}
+      [d,tgt].forEach(x=>{if((x.legs||[]).length&&(!x.title||x.title.includes('→')))x.title=retitle(x)});await save();toast('Trecho salvo');close();return}
     if(kind==='odo'){const v=num(o.odo);if(!v)return msg('Informe o odômetro.');S.odo=S.odo||[];S.odo.push({id:uid(),ts:o.ts||iso(Date.now()),odo:v});await save();toast('Odômetro registrado');close();return}
     if(kind==='rv'){S.rv=S.rv||{};const r=S.rv[editId]||{};const ids=(r.photos||[]).filter(x=>!rvDel.includes(x));for(const b of pendingMany){const id='p'+uid();await idb.set('photos',id,b);ids.push(id)}rvDel.forEach(x=>idb.del('photos',x).catch(()=>{}));
       S.rv[editId]={when:o.when||'',odo:num(o.odo)||null,fuel:o.fuel||'',propane:o.propane||'',gen:num(o.gen)||null,notes:(o.notes||'').trim(),photos:ids};pendingMany=[];rvDel=[];await save();toast('Salvo');close();return}
@@ -473,7 +488,7 @@ const COLS={date:['data','dia','date'],title:['titulo','title','programacao','de
 function mapHead(row){const idx={};row.forEach((c,i)=>{const n=norm(c);for(const[k,al]of Object.entries(COLS))if(idx[k]===undefined&&(al.includes(n)||(k==='addr'&&n.startsWith('endereco'))))idx[k]=i});return idx}
 function findHead(rows){for(let i=0;i<Math.min(rows.length,10);i++){const ix=mapHead(rows[i]);if(ix.date!==undefined)return{i,ix}}return null}
 function parseStopsCell(v){return String(v??'').split(/\r?\n|;/).map(x=>x.trim()).filter(Boolean).map(x=>{const p=x.split(/\s*\|\|?\s*/);return (p[0]||'').trim()+(p[1]&&p[1].trim()?' || '+p[1].trim():'')})}
-const LCOLS={date:['data','dia'],from:['origem','de'],fromAddr:['enderecoorigem','origemendereco','enderecodeorigem','enderecodesaida'],to:['destino','para'],toAddr:['enderecodestino','destinoendereco','enderecodedestino','enderecodechegada'],dep:['saida','partida','horasaida','horadesaida'],dur:['tempo','duracao'],arr:['chegada','horachegada'],link:['rotamaps','rota','maps','link','transporte','modo','como'],cost:['custo','custoprevisto','preco'],dist:['distancia','distanciami','milhas','mi'],fixed:['fixo','horariofixo','compromisso']};
+const LCOLS={kind:['tipo','tipodehora','tipohora'],mode:['como','transporte','modo'],date:['data','dia'],from:['origem','de','partida','localdepartida'],fromAddr:['enderecoorigem','origemendereco','enderecodeorigem','enderecodesaida','enderecodapartida','enderecopartida'],to:['destino','para'],toAddr:['enderecodestino','destinoendereco','enderecodedestino','enderecodechegada','enderecododestino'],dep:['hora','saida','horasaida','horadesaida','horaprevista'],dur:['tempo','duracao'],arr:['chegada','horachegada'],link:['rotamaps','rota','maps','link'],cost:['custo','custoprevisto','preco'],dist:['distancia','distanciami','milhas','mi'],fixed:['fixo','horariofixo','compromisso']};
 const frac=v=>{if(typeof v==='number'){const f=v-Math.floor(v);return Math.round(f*1440)%1440}return toMin(v)};
 function legsSheet(rows){for(let i=0;i<Math.min(rows.length,10);i++){const ix={};rows[i].forEach((c,k)=>{const n=norm(c);for(const[key,al]of Object.entries(LCOLS))if(ix[key]===undefined&&al.includes(n))ix[key]=k});
   if(ix.date!==undefined&&ix.from!==undefined&&ix.to!==undefined&&(ix.dep!==undefined||ix.dur!==undefined)){
@@ -481,10 +496,11 @@ function legsSheet(rows){for(let i=0;i<Math.min(rows.length,10);i++){const ix={}
     if(ix.toAddr===undefined&&!norm(rows[i][ix.to+1]))ix.toAddr=ix.to+1;return{i,ix}}}return null}
 function readLegs(rows,hd){const ix=hd.ix,by={};const g=(r,k)=>ix[k]===undefined?'':String(r[ix[k]]??'').trim();
   for(const r of rows.slice(hd.i+1)){const date=xlDate(r[ix.date]);if(!date)continue;const lk=g(r,'link');const link=/^https?:\/\//i.test(lk)?lk.replace(/^http:/i,'https:'):'';
-    const l={from:g(r,'from'),fromAddr:g(r,'fromAddr'),to:g(r,'to'),toAddr:g(r,'toAddr'),dep:ix.dep===undefined?null:frac(r[ix.dep]),dur:ix.dur===undefined?null:frac(r[ix.dur]),mode:link?'RV':(lk||'RV'),link,cost:xlNum(g(r,'cost'))||0,dist:xlNum(g(r,'dist'))||0,fixed:/^(s|sim|x|yes|true|1)/i.test(g(r,'fixed'))};
+    const mtx=g(r,'mode')||(link?'RV':(lk||'RV'));const kd=norm(g(r,'kind')).startsWith('comp')||/^(s|sim|x|yes|true|1)/i.test(g(r,'fixed'))?'comp':'prev';
+    const l={from:g(r,'from'),fromAddr:g(r,'fromAddr'),to:g(r,'to'),toAddr:g(r,'toAddr'),dep:ix.dep===undefined?null:frac(r[ix.dep]),kind:kd,dur:ix.dur===undefined?null:frac(r[ix.dur]),mode:mtx,link,cost:xlNum(g(r,'cost'))||0,dist:xlNum(g(r,'dist'))||0};l.mode=modeOf(l);
     if(!l.to&&!l.toAddr)continue;if(l.dur==null&&ix.arr!==undefined&&l.dep!=null){const a=frac(r[ix.arr]);if(a!=null)l.dur=(a-l.dep+1440)%1440}
     (by[date]=by[date]||[]).push(l)}return by}
-function dayFromLegs(date,legs,base){const old=(base&&base.legs)?[...base.legs]:[];legs.forEach(l=>{const k=old.findIndex(o=>o&&o.from===l.from&&o.to===l.to);if(k>=0){const o=old[k];old[k]=null;['actDep','actArr','visit','depGps'].forEach(f=>{if(o[f])l[f]=o[f]});if(o.fixed&&!l.fixed)l.fixed=true}});
+function dayFromLegs(date,legs,base){const old=(base&&base.legs)?[...base.legs]:[];legs.forEach(l=>{const k=old.findIndex(o=>o&&o.from===l.from&&o.to===l.to);if(k>=0){const o=old[k];old[k]=null;['actDep','actArr','visit','depGps'].forEach(f=>{if(o[f])l[f]=o[f]});if(o.kind==='comp'&&l.kind!=='comp'&&!0){}}});
   const d={id:(base&&base.id)||('d'+date.replace(/-/g,'')),date,legs,notes:(base&&base.notes)||''};const rv=legs.filter(isRV);const last=rv[rv.length-1]||legs[legs.length-1];
   const names=[];legs.forEach(l=>{[l.from,l.to].forEach(n=>{if(n&&names[names.length-1]!==n)names.push(n)})});
   d.title=names.slice(0,6).join(' → ');d.from=legs[0].fromAddr||legs[0].from;d.to=last.toAddr||last.to;d.toName=last.to||'';d.stay=last.to||last.toAddr;d.stops='';const T=dayTotals(d);d.drive=T.mi?'RV '+durTxt(T.rvMin)+' · '+Math.round(T.mi)+' mi':'';return d}
@@ -508,11 +524,11 @@ async function onImportFile(file){try{toast('Lendo planilha…');const res=await
   <p class="small mut">Gastos, check-ins, fotos e notas não mudam. Saídas e chegadas já registradas nos trechos são mantidas.</p><div class="row" style="margin-top:16px"><button class="btn pri" type="submit">Importar</button><button class="btn" type="button" data-act="close">Cancelar</button></div><p class="small mut" id="fmsg"></p>`)}
   catch(e){toast(e.message||'Não consegui ler a planilha')}}
 async function exportRoteiro(){const X=await loadXL();const L=days();const dd=s=>s.split('-').reverse().join('/');
-  const d0=[['Data','Origem','Endereço origem','Destino','Endereço destino','Saída','Tempo','Chegada','Rota Maps','Custo','Distância','Fixo']];L.forEach(d=>(d.legs||[]).forEach(l=>d0.push([dd(d.date),l.from,l.fromAddr,l.to,l.toAddr,hhmm(l.dep),l.dur?Math.floor(l.dur/60)+':'+String(l.dur%60).padStart(2,'0'):'',l.dep!=null&&l.dur?hhmm(l.dep+l.dur):'',l.link||l.mode||'',num(l.cost)||'',num(l.dist)||'',l.fixed?'Sim':''])));
+  const d0=[['Data','Hora','Tipo','Tempo','Distância','Partida','Endereço da partida','Destino','Endereço do destino','Como','Custo previsto','Rota Maps']];L.forEach(d=>(d.legs||[]).forEach(l=>d0.push([dd(d.date),hhmm(l.dep),l.kind==='comp'?'Compromisso':'Prevista',l.dur?Math.floor(l.dur/60)+':'+String(l.dur%60).padStart(2,'0'):'',num(l.dist)||'',l.from,l.fromAddr,l.to,l.toAddr,modeOf(l),num(l.cost)||'',l.link||''])));
   const d1=[['Data','Título','Saindo de','Destino','Estrada','Pernoite','Observações']].concat(L.map(d=>[dd(d.date),d.title,(d.legs||[]).length?'':d.from,(d.legs||[]).length?'':d.to,d.drive,d.stay,d.notes]));
   const d2=[['Data','Ordem','Parada','Endereço']];L.filter(d=>!(d.legs||[]).length).forEach(d=>stopsOf(d).forEach((s,i)=>d2.push([dd(d.date),i+1,s.name,s.addr])));
-  const wb=X.utils.book_new();const s0=X.utils.aoa_to_sheet(d0),s1=X.utils.aoa_to_sheet(d1),s2=X.utils.aoa_to_sheet(d2);s0['!cols']=[{wch:11},{wch:22},{wch:45},{wch:22},{wch:45},{wch:7},{wch:7},{wch:8},{wch:40},{wch:8},{wch:9},{wch:6}];s1['!cols']=[{wch:11},{wch:40},{wch:30},{wch:30},{wch:20},{wch:30},{wch:50}];s2['!cols']=[{wch:11},{wch:7},{wch:40},{wch:50}];
-  const s3=X.utils.aoa_to_sheet([['Como usar'],['Aba Trechos: uma linha por deslocamento. Saída hh:mm, Tempo h:mm, Rota Maps = link da sua rota ou Uber / A pé / Ônibus, Custo em US$, Distância em milhas, Fixo = Sim para compromisso com hora marcada.'],['Aba Dias: título, pernoite e observações de cada dia. Aba Paradas: só para dias sem trechos.'],['No app: Roteiro → Importar planilha. Só as datas que estão na planilha são atualizadas.']]);s3['!cols']=[{wch:120}];
+  const wb=X.utils.book_new();const s0=X.utils.aoa_to_sheet(d0),s1=X.utils.aoa_to_sheet(d1),s2=X.utils.aoa_to_sheet(d2);s0['!cols']=[{wch:11},{wch:7},{wch:12},{wch:7},{wch:9},{wch:22},{wch:45},{wch:22},{wch:45},{wch:9},{wch:9},{wch:40}];s1['!cols']=[{wch:11},{wch:40},{wch:30},{wch:30},{wch:20},{wch:30},{wch:50}];s2['!cols']=[{wch:11},{wch:7},{wch:40},{wch:50}];
+  const s3=X.utils.aoa_to_sheet([['Como usar'],['Aba Trechos: uma linha por deslocamento. Hora hh:mm; Tipo = Prevista (hora de saída) ou Compromisso (hora em que precisa chegar); Tempo h:mm; Distância em milhas; Como = RV, Uber ou Veículo; Custo previsto em US$; Rota Maps = link opcional da sua rota.'],['Aba Dias: título, pernoite e observações de cada dia. Aba Paradas: só para dias sem trechos.'],['No app: Roteiro → Importar planilha. Só as datas que estão na planilha são atualizadas.']]);s3['!cols']=[{wch:120}];
   X.utils.book_append_sheet(wb,s0,'Trechos');X.utils.book_append_sheet(wb,s1,'Dias');X.utils.book_append_sheet(wb,s2,'Paradas');X.utils.book_append_sheet(wb,s3,'Como usar');
   const buf=X.write(wb,{bookType:'xlsx',type:'array'});await deliver(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),'roteiro-viagem-'+stamp()+'.xlsx')}
 
@@ -595,6 +611,10 @@ document.addEventListener('click',async ev=>{const el=ev.target.closest('[data-a
   else if(a==='vis')openVis(el.dataset.id);
   else if(a==='leg'){ev.preventDefault();openLeg(el.dataset.id,el.dataset.i)}
   else if(a==='lgdep'||a==='lgarr'){el.disabled=true;await legAct(el.dataset.id,+el.dataset.i,a==='lgdep'?'dep':'arr')}
+  else if(a==='lmv'||a==='lrm'){const d=S.days.find(x=>x.id===el.dataset.id);if(!d||!d.legs)return;const i=+el.dataset.i;
+    if(a==='lrm'){if(!el.classList.contains('arm')){el.classList.add('arm');el.textContent='Excluir?';setTimeout(()=>{if(el.isConnected){el.classList.remove('arm');el.textContent='✕'}},3500);return}d.legs.splice(i,1)}
+    else{const j=i+(+el.dataset.dir);if(j<0||j>=d.legs.length)return;[d.legs[i],d.legs[j]]=[d.legs[j],d.legs[i]]}if(!d.title||d.title.includes('→'))d.title=retitle(d)||d.title;await save()}
+  else if(a==='dini'||a==='dfim'){const d=S.days.find(x=>x.id===el.dataset.id);if(!d)return;d.trip=d.trip||{};const now=iso(Date.now());if(a==='dini')d.trip.actDep=now;else d.trip.actArr=now;await save();toast((a==='dini'?'Início':'Término')+' às '+hm(now))}
   else if(a==='odo')openOdo();
   else if(a==='rvedit')openRV(el.dataset.k);
   else if(a==='rvdelph'){rvDel.push(el.dataset.id);el.closest('.th').remove()}
@@ -636,6 +656,7 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden&&!sheet.cl
 
 /* ================= início ================= */
 (async()=>{try{const st=await idb.get('kv','state');if(st)S=st;else if(self.SEED){S=JSON.parse(JSON.stringify(self.SEED));await idb.set('kv','state',S)}}catch(e){toast('Este navegador não permite guardar dados')}
+  (S.days||[]).forEach(d=>(d.legs||[]).forEach(l=>{if(l.fixed&&!l.kind){l.kind='comp';if(l.dep!=null)l.dep=l.dep+(l.dur||0)}delete l.fixed;if(!l.kind)l.kind='prev';l.mode=modeOf(l)}));
   S.visits=S.visits||[];S.notes=S.notes||[];S.odo=S.odo||[];S.rv=S.rv||{};S.rates=S.rates||{};S.cfg=S.cfg||{rate:5.87};try{aiKey=(await idb.get('kv','apikey'))||''}catch(e){}render();
   try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}
   if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});fillRates();addEventListener('online',fillRates)})();
