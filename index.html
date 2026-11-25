@@ -88,6 +88,7 @@ nav a{font-size:11px}
 .strike{text-decoration:line-through;color:var(--mut)}
 .hdrbtn{display:inline-grid;place-items:center;width:44px;height:44px;border-radius:12px;background:var(--soft);color:var(--ink)}.hdrbtn svg{width:22px;height:22px}
 .thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:6px;margin-top:8px}.thumbs img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px;display:block}.thumbs .th{position:relative}.thumbs .th button{position:absolute;top:4px;right:4px;width:28px;height:28px;border-radius:8px;border:0;background:rgba(0,0,0,.6);color:#fff}
+.tagg{display:inline-block;background:light-dark(#e6e8e6,#2a322d);padding:3px 10px;margin-top:8px;font-size:15px;letter-spacing:.02em}
 .rowbtn .ib{min-width:46px;min-height:46px;font-size:18px}.leg2{gap:12px}
 .kv{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 12px;font-size:15px}.kv b{font-weight:600}
 </style></head><body>
@@ -141,7 +142,7 @@ function legsHTML(d,hoje){const L=legsOf(d);if(!L.length)return '';const nx=L.fi
 const hhmm=m=>m==null||m===''||isNaN(m)?'':String(Math.floor(((m%1440)+1440)%1440/60)).padStart(2,'0')+':'+String(((m%60)+60)%60).padStart(2,'0');
 const durTxt=m=>!m?'':(m<60?m+' min':Math.floor(m/60)+'h'+(m%60?String(m%60).padStart(2,'0'):''));
 const toMin=s=>{s=String(s??'').trim();if(!s)return null;const m=s.match(/^(\d{1,2})(?::|h)(\d{2})?/);return m?(+m[1])*60+(+(m[2]||0)):null};
-const modeOf=l=>{const m=norm(l.mode);if(m.includes('uber')||isUberLink(l.link))return 'Uber';if(m.includes('veic')||m.includes('carro'))return 'Veículo';if(m==='rv'||safeLink(l.link)||num(l.dist))return 'RV';if(!m&&num(l.cost))return 'Uber';if(!m)return 'RV';return l.mode};
+const modeOf=l=>{const m=norm(l.mode);if(m.includes('aere')||m==='voo'||m==='aviao')return 'Aéreo';if(m.includes('uber')||isUberLink(l.link))return 'Uber';if(m.includes('veic')||m.includes('carro'))return 'Veículo';if(m==='rv'||safeLink(l.link)||num(l.dist))return 'RV';if(!m&&num(l.cost))return 'Uber';if(!m)return 'RV';return l.mode};
 const legMode=l=>{const m=norm(l.mode);return m.includes('uber')?'uber':(m==='ape'||m.startsWith('ape'))?'walk':(m.includes('onibus')||m.includes('bus'))?'transit':'drive'};
 const isRV=l=>modeOf(l)==='RV';const isCar=l=>['RV','Veículo'].includes(modeOf(l));
 const travelMode=l=>({walk:'walking',transit:'transit'}[legMode(l)]||'driving');
@@ -158,24 +159,30 @@ function sched(d){const L=d.legs||[];const today=d.date===todayISO();const now=t
     prevP=pArr;prevE=eArr;prevComp=l.kind==='comp';return{l,i,pDep,pArr,eDep,eArr,st,late:eArr-pArr,dlate:eDep-pDep}})}
 
 const lateTag=m=>Math.abs(m)<5?'<span class="tagr ok">no horário</span>':m>0?`<span class="tagr late">atrasado ${esc(durTxt(m))}</span>`:`<span class="tagr ok">adiantado ${esc(durTxt(-m))}</span>`;
-function legGps(l,big){const a=l.fromAddr||l.from,b=l.toAddr||l.to;const g='https://www.google.com/maps/dir/?api=1&origin='+encodeURIComponent(a)+'&destination='+encodeURIComponent(b)+'&travelmode='+travelMode(l)+'&dir_action=navigate';const c=big?'btn':'btn';const o=[];
+function legGps(l,big){if(modeOf(l)==='Aéreo')return '';const a=l.fromAddr||l.from,b=l.toAddr||l.to;const g='https://www.google.com/maps/dir/?api=1&origin='+encodeURIComponent(a)+'&destination='+encodeURIComponent(b)+'&travelmode='+travelMode(l)+'&dir_action=navigate';const c=big?'btn':'btn';const o=[];
   if(modeOf(l)==='Uber')o.push(`<a class="${c}" style="background:#000;color:#fff" href="${esc(isUberLink(l.link)?safeLink(l.link):uberURL(b))}" target="_blank" rel="noopener">Uber</a>`);
   if(safeLink(l.link)&&!isUberLink(l.link))o.push(`<a class="${c} pri" href="${esc(l.link)}" target="_blank" rel="noopener">Sua rota</a>`);
   o.push(`<a class="${c}${safeLink(l.link)&&!isUberLink(l.link)?'':' blue'}" href="${esc(g)}" target="_blank" rel="noopener">Maps</a>`);
   if(isCar(l))o.push(`<a class="${c}" style="background:#33ccff;color:#062a3a" href="${esc(wazeURL(b))}" target="_blank" rel="noopener">Waze</a>`);return o.join('')}
 const hmTxt=m=>Math.floor(m/60)+'h'+String(m%60).padStart(2,'0');
-function legTag(l){let t=modeOf(l);if(l.dur!=null&&l.dur!=='')t+=' '+hmTxt(l.dur||0);if(num(l.dist))t+=' · '+f1(num(l.dist))+' mi';return t}
+function legTag(l){let t=modeOf(l).toUpperCase();if(l.dur!=null&&l.dur!=='')t+=' - '+hmTxt(l.dur||0);return t}
 const isUberLink=u=>/uber\.com/i.test(u||'');
 function legFuel(l){const ex=S.exp.filter(e=>e.legId&&e.legId===l.id&&e.cat==='comb');return{val:ex.reduce((s,e)=>s+usd(e),0),gal:ex.reduce((s,e)=>s+num(e.gal),0),n:ex.length}}
 function legHora(l){return l.dep==null?'':(l.kind==='comp'?`compromisso às ${hhmm(l.dep)}`:`${modeOf(l)} às ${hhmm(l.dep)}`)}
-function legRow(d,s,n){const l=s.l;const a=l.fromAddr||l.from,b=l.toAddr||l.to;const real=l.actDep?`real ${hm(l.actDep)}${l.actArr?' → '+hm(l.actArr):' → …'}`:'';
-  const gps=[];const st='display:grid;place-items:center;text-decoration:none;min-width:66px;min-height:46px;font-size:16px';const gen='https://www.google.com/maps/dir/?api=1&origin='+encodeURIComponent(a)+'&destination='+encodeURIComponent(b)+'&travelmode='+travelMode(l)+'&dir_action=navigate';
-  gps.push(`<a class="ib go" style="${st}" href="${esc(safeLink(l.link)||gen)}" target="_blank" rel="noopener">Maps</a>`);gps.push(`<a class="ib" style="background:#33ccff;color:#062a3a;${st}" href="${esc(wazeURL(b))}" target="_blank" rel="noopener">Waze</a>`);
-  const fu=legFuel(l);
-  const pv=s.i>0?d.legs[s.i-1]:null;const fromLbl=l.from+(pv&&legHora(pv)?' ('+legHora(pv)+')':'');
-  return `<div class="leg2" style="align-items:start"><span data-act="leg" data-id="${esc(d.id)}" data-i="${s.i}" style="cursor:pointer">${s.st==='done'?'<b style="color:var(--gtxt)">✓</b> ':''}<b>${s.i+1}.</b> ${esc(fromLbl)} → <b>${esc(l.to)}${legHora(l)?' ('+esc(legHora(l))+')':''}</b>
-   <br><span class="small mut">${esc(l.toAddr||'')}</span>${fu.n?`<br><span class="small">Gasolina ${esc(money(fu.val))}${fu.gal?' · '+esc(f1(fu.gal))+' gal':''}</span>`:''}${real?`<br><span class="small"><b>${esc(real)}</b> ${s.st==='done'?lateTag(s.late):''}</span>`:''}</span>
-   <span style="display:grid;gap:6px;justify-items:end"><span class="sb rowbtn"><button class="ib" data-act="lmv" data-id="${esc(d.id)}" data-i="${s.i}" data-dir="-1" aria-label="Subir" ${s.i?'':'disabled'}>↑</button><button class="ib" data-act="lmv" data-id="${esc(d.id)}" data-i="${s.i}" data-dir="1" aria-label="Descer" ${s.i<n-1?'':'disabled'}>↓</button><button class="ib" data-act="lrm" data-id="${esc(d.id)}" data-i="${s.i}" aria-label="Excluir">✕</button></span><span class="sb">${gps.join('')}</span><span class="drive" style="margin:0">${esc(legTag(l))}</span></span></div>`}
+function legStops(l){return vis().filter(v=>v.legId&&v.legId===l.id)}
+function legRow(d,s,n){const l=s.l;const a=l.fromAddr||l.from,b=l.toAddr||l.to;const air=modeOf(l)==='Aéreo';
+  const st='display:grid;place-items:center;text-decoration:none;min-width:66px;min-height:46px;font-size:16px';const gen='https://www.google.com/maps/dir/?api=1&origin='+encodeURIComponent(a)+'&destination='+encodeURIComponent(b)+'&travelmode='+travelMode(l)+'&dir_action=navigate';
+  const gps=air?'':`<span class="sb"><a class="ib go" style="${st}" href="${esc(safeLink(l.link)||gen)}" target="_blank" rel="noopener">Maps</a><a class="ib" style="background:#33ccff;color:#062a3a;${st}" href="${esc(wazeURL(b))}" target="_blank" rel="noopener">Waze</a></span>`;
+  const sd=l.dep==null&&!l.actDep?'--:--':hhmm(s.eDep),sa=l.dep==null&&!l.actArr&&!l.actDep?'--:--':(l.dur!=null||l.actArr?hhmm(s.eArr):'--:--');
+  const ps=legStops(l);
+  return `<div class="leg2" style="align-items:start;padding:14px 0"><div data-act="leg" data-id="${esc(d.id)}" data-i="${s.i}" style="cursor:pointer">
+   <div style="font-size:17px">${s.st==='done'?'<b style="color:var(--gtxt)">✓</b> ':''}${s.i+1}. ${esc(l.from||'Origem')} - ${esc(l.to||'Destino')}</div>
+   <div style="margin-top:10px;font-size:17px;line-height:1.35">Saída (${esc(sd)})<br>Chegada (${esc(sa)})${l.kind==='comp'?' <span class="tagr fix">compromisso</span>':''}</div>
+   ${l.toAddr?`<div class="small mut" style="margin-top:8px">${esc(l.toAddr)}</div>`:''}
+   <span class="tagg">${esc(legTag(l))}</span>
+   ${ps.length?`<div class="small" style="margin-top:8px">${ps.map(v=>{const ex=expOfVisit(v.id);return `<div style="margin-top:3px">• <b>${esc(v.place)}</b>${v.type&&typeName(v.type)!==v.place?' ('+esc(typeName(v.type))+')':''} ${esc(hm(v.arr))}${v.dep?' · '+esc(dur(ms(v.arr,v.dep))):''}${ex.length?' · '+esc(money(ex.reduce((s2,e)=>s2+usd(e),0))):''}</div>`}).join('')}</div>`:''}
+  </div>
+  <div style="display:grid;gap:8px;justify-items:end"><span class="sb rowbtn"><button class="ib" data-act="lmv" data-id="${esc(d.id)}" data-i="${s.i}" data-dir="-1" aria-label="Subir" ${s.i?'':'disabled'}>↑</button><button class="ib" data-act="lmv" data-id="${esc(d.id)}" data-i="${s.i}" data-dir="1" aria-label="Descer" ${s.i<n-1?'':'disabled'}>↓</button><button class="ib" data-act="lrm" data-id="${esc(d.id)}" data-i="${s.i}" aria-label="Excluir">✕</button></span>${gps}<button class="ib" style="min-height:40px;padding:0 14px" data-act="leg" data-id="${esc(d.id)}" data-i="${s.i}">Editar</button></div></div>`}
 
 function dayTotals(d){const L=d.legs||[];const rv=L.filter(isRV);return{mi:rv.reduce((s,l)=>s+num(l.dist),0),rvMin:rv.reduce((s,l)=>s+(l.dur||0),0),cost:L.reduce((s,l)=>s+num(l.cost),0)}}
 function dayStatus(d){const S2=sched(d);const cur=S2.find(s=>s.st==='going')||S2.find(s=>s.st==='next');if(!cur)return S2.length?{done:true,late:S2[S2.length-1].late}:null;return{cur,late:cur.st==='next'?cur.dlate:cur.late}}
@@ -283,13 +290,14 @@ function vHoje(){const w=where(),L=w.L;
   <div class="card"><div class="mut small">Gasto hoje</div><div class="big">${esc(money(te.reduce((s,e)=>s+usd(e),0)))}</div><div class="mut small">${te.length} lançamento(s) · viagem ${esc(money(S.exp.reduce((s,e)=>s+usd(e),0)))}</div></div>`}
 
 function vRoteiro(){const L=days(),t=todayISO();const mi=L.reduce((s,d)=>s+dayTotals(d).mi,0),c=L.reduce((s,d)=>s+dayTotals(d).cost,0),incl=num(S.cfg.milesIncl)||2000;
-  return `<button class="btn pri" style="width:100%;min-height:54px;font-size:18px;margin-bottom:6px" data-act="day">+ Dia</button>
-  ${L.map((d,i)=>{const st=stopsOf(d);const hasL=(d.legs||[]).length>0;return `<article class="day ${d.date===t?'now':''}"><div class="d">${esc(fd(d.date,{day:'2-digit'}))}<small>${esc(fd(d.date,{month:'short'}))} · ${esc(fd(d.date,{weekday:'short'}))}</small></div>
-   <div><h3>${esc(d.title||'Dia '+(i+1))}</h3>${d.notes?`<div class="small mut" style="white-space:pre-line;margin-top:4px">${esc(d.notes)}</div>`:''}
-   ${hasL?`<div style="margin-top:8px">${sched(d).map(s=>legRow(d,s,d.legs.length)).join('')}</div>`:`${st.length?`<ol class="stops">${st.map((s,j)=>`<li><span>${esc(s.name)}${s.addr?' <span class="tag">na rota</span>':''}</span><span class="sb"><button class="ib" data-act="mv" data-id="${esc(d.id)}" data-i="${j}" data-dir="-1" aria-label="Subir" ${j?'':'disabled'}>↑</button><button class="ib" data-act="mv" data-id="${esc(d.id)}" data-i="${j}" data-dir="1" aria-label="Descer" ${j<st.length-1?'':'disabled'}>↓</button><button class="ib" data-act="rm" data-id="${esc(d.id)}" data-i="${j}" aria-label="Remover">✕</button></span></li>`).join('')}</ol>`:''}${legsHTML(d,false)}`}
-   <div class="acts"><button class="btn" data-act="leg" data-id="${esc(d.id)}" data-i="-1">+ Trecho</button>${hasL?'':`<button class="btn" data-act="stop" data-id="${esc(d.id)}">+ Parada</button>`}<button class="btn" data-act="day" data-id="${esc(d.id)}">Editar dia</button></div></div></article>`}).join('')||'<div class="empty">Sem dias.</div>'}
+  const addDay=`<button class="btn pri" style="width:100%;min-height:54px;font-size:18px;margin:6px 0" data-act="newday">+ Dia</button>`;
+  return `${addDay}
+  ${L.map(d=>`<article class="day ${d.date===t?'now':''}"><div class="d">${esc(fd(d.date,{day:'2-digit'}))}<small>${esc(fd(d.date,{month:'short'}))} · ${esc(fd(d.date,{weekday:'short'}))}</small></div>
+   <div>${(d.legs||[]).length?sched(d).map(s=>legRow(d,s,d.legs.length)).join(''):'<p class="small mut">Sem trechos.</p>'}
+   <div class="acts"><button class="btn" data-act="leg" data-id="${esc(d.id)}" data-i="-1">+ Trecho</button></div></div></article>`).join('')||'<div class="empty">Sem dias.</div>'}
+  ${L.length?addDay:''}
   ${mi||c?`<div class="card"><div class="small mut">Planejado no roteiro</div><b style="font-size:20px">${esc(f1(mi))} mi de RV</b> <span class="small ${mi>incl*.85?'late':'mut'}">de ${esc(f1(incl))} incluídas${mi>incl*.85?' — margem apertada':''}</span>${c?`<div class="small">Uber/transporte previsto: <b>${esc(money(c))}</b></div>`:''}<div class="meter"><i style="width:${Math.min(100,mi/incl*100).toFixed(1)}%;${mi>incl*.85?'background:var(--red)':''}"></i></div></div>`:''}
-  <div class="card"><h3>Planilha do roteiro</h3><p class="small mut">Colunas: Data, Origem, endereço, Destino, endereço, Saída, Tempo, Chegada, Rota Maps, Custo, Distância, Gasolina, Tipo (Prevista ou Compromisso). Só as datas que estão na planilha são atualizadas.</p><div class="row"><label class="btn blue">Importar planilha<input type="file" id="impx" accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv" hidden></label><button class="btn" data-act="xlx">Baixar em Excel</button></div></div>`}
+  <div class="card"><h3>Planilha do roteiro</h3><p class="small mut">Colunas: Data, Origem, endereço, Destino, endereço, Saída, Tempo, Chegada, Rota Maps, Custo, Distância, Gasolina, Tipo. Só as datas que estão na planilha são atualizadas.</p><div class="row"><label class="btn blue">Importar planilha<input type="file" id="impx" accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv" hidden></label><button class="btn" data-act="xlx">Baixar em Excel</button></div></div>`}
 
 let fCat='all',fWhen='all';
 function totals(list){const tot=list.reduce((s,e)=>s+usd(e),0);const by=CATS.map(c=>[c[1],list.filter(e=>e.cat===c[0]).reduce((s,e)=>s+usd(e),0),c[2]]).filter(x=>x[1]>0).sort((a,b)=>b[1]-a[1]);
@@ -409,8 +417,8 @@ function openDay(id){const d=S.days.find(x=>x.id===id)||{};kind='day';editId=d.i
   <label class="f" for="dto">Destino final do dia (endereço)</label><input id="dto" name="to" value="${esc(d.to||'')}" placeholder="Ex.: Kia Center, Orlando, FL">
   <label class="f" for="dn">Observações</label><textarea id="dn" name="notes">${esc(d.notes||'')}</textarea>${foot(!!d.id)}`)}
 const ptRow=s=>`<div class="pt"><input name="pn" placeholder="Nome (ex.: Casa da Dani)" value="${esc(s.name)}"><button type="button" class="ib" data-act="delpt" aria-label="Remover ponto">✕</button><input name="pa" placeholder="Endereço para o GPS (opcional)" value="${esc(s.addr)}"></div>`;
-const MODES=['RV','Uber','Veículo'];let legIdx=-1;
-function openLeg(id,i){const d=S.days.find(x=>x.id===id);if(!d)return;kind='leg';editId=id;legIdx=+i;const L=d.legs||[];const prev=L[L.length-1]||{};const l=legIdx>=0?L[legIdx]:{from:prev.to||'',fromAddr:prev.toAddr||'',mode:'RV',kind:'prev'};
+const MODES=['RV','Uber','Veículo','Aéreo'];let legIdx=-1;
+function openLeg(id,i){let d=S.days.find(x=>x.id===id);if(id==='new'){const L=days();const last=L[L.length-1];const nd=last?new Date(new Date(last.date+'T12:00').getTime()+864e5).toISOString().slice(0,10):todayISO();d={id:'new',date:nd,legs:[]}}if(!d)return;kind='leg';editId=id;legIdx=+i;const L=d.legs||[];const prev=L[L.length-1]||{};const l=legIdx>=0?L[legIdx]:{from:prev.to||'',fromAddr:prev.toAddr||'',mode:'RV',kind:'prev'};
   const mo=modeOf(l);const tAct=s=>s?hm(s):'';const ro=(n,v,lab)=>`<label class="chip"><input type="radio" name="${n}" value="${v}" ${((n==='kind'?(l.kind||'prev'):mo)===v)?'checked':''}>${lab}</label>`;
   open(`<h2>${legIdx>=0?'Editar trecho':'Novo trecho'}</h2>
   <div class="two"><div><label class="f" for="lda">Data</label><input id="lda" name="date" type="date" value="${esc(d.date)}"></div><div><label class="f" for="ld">Hora</label><input id="ld" name="dep" type="time" value="${esc(hhmm(l.dep))}"></div></div>
@@ -425,9 +433,13 @@ function openLeg(id,i){const d=S.days.find(x=>x.id===id);if(!d)return;kind='leg'
   <label class="f">Como?</label><div class="chips">${MODES.map(m=>ro('mode',m,m)).join('')}${MODES.includes(mo)?'':ro('mode',mo,mo)}</div>
   ${legIdx>=0&&legFuel(l).n?`<p class="small" style="margin:12px 0 0"><b>Gasolina neste trecho:</b> ${esc(money(legFuel(l).val))}${legFuel(l).gal?' · '+esc(f1(legFuel(l).gal))+' gal':''} (dos abastecimentos)</p>`:''}
   <label class="f" for="lc">Custo previsto (US$)</label><input id="lc" name="cost" inputmode="decimal" value="${num(l.cost)?esc(String(l.cost).replace('.',',')):''}">
-  <label class="f" for="ll">Link da rota no Google Maps (opcional)</label><input id="ll" name="link" value="${esc(l.link||'')}" placeholder="https://maps.app.goo.gl/...">${foot(legIdx>=0)}`)}
+  <label class="f" for="ll">Link da rota no Google Maps (opcional)</label><input id="ll" name="link" value="${esc(l.link||'')}" placeholder="https://maps.app.goo.gl/...">${foot(legIdx>=0).replace('>Excluir<','>Excluir trecho<')}`)}
 
 function curLegNow(){const t=todayISO();const d=S.days.find(x=>x.date===t);if(!d||!(d.legs||[]).length)return null;const sc=sched(d);const s=sc.find(x=>x.st==='going')||[...sc].reverse().find(x=>x.st==='done')||sc.find(x=>x.st==='next');if(!s)return null;if(!s.l.id){s.l.id=uid()}return s.l}
+function legacyToLegs(d){const st=stopsOf(d);const pr=s=>{const m=s.match(/^(.*?)\s*\((.+?) às (\d{1,2}:\d{2})\)\s*$/);return m?{name:m[1].trim(),mode:m[2],dep:toMin(m[3])}:{name:s}};const air=/\bvoo\b|aére|aereo/i.test(d.title||'');const base={dur:null,kind:'prev',cost:0,dist:0,link:''};
+  const withA=st.filter(s=>s.addr);if(withA.length){const legs=[];let prev={name:d.from||'Partida',addr:d.from||''};withA.forEach(s=>{const p=pr(s.name);legs.push({...base,id:uid(),from:prev.name,fromAddr:prev.addr,to:p.name,toAddr:s.addr,dep:p.dep??null,mode:p.mode||'RV'});prev={name:p.name,addr:s.addr}});if(d.to&&d.to!==prev.addr)legs.push({...base,id:uid(),from:prev.name,fromAddr:prev.addr,to:d.toName||d.to,toAddr:d.to,dep:null,mode:'RV'});legs.forEach(l=>l.mode=modeOf(l));return legs}
+  let from=d.from||'',to=d.toName||d.to||'';if((d.title||'').includes('→')){const pts=d.title.replace(/^voo\s+/i,'').split(/\s*→\s*/);from=from||pts[0];if(!d.to)to=pts[pts.length-1].replace(/\s*\(.*\)\s*$/,'');else if(air){from=pts[0];to=pts[pts.length-1].replace(/\s*\(.*\)\s*$/,'')}}
+  if(!from&&!to)return [];return [{...base,id:uid(),from:from||'Partida',fromAddr:d.from||'',to:to||'Destino',toAddr:d.to||'',dep:null,mode:air?'Aéreo':'RV'}]}
 function retitle(d){const names=[];(d.legs||[]).forEach(l=>{[l.from,l.to].forEach(n=>{if(n&&names[names.length-1]!==n)names.push(n)})});return names.slice(0,6).join(' → ')}
 function openOdo(){kind='odo';editId='';open(`<h2>Registrar odômetro</h2><label class="f" for="oo">Odômetro agora (milhas)</label><input id="oo" name="odo" inputmode="numeric" placeholder="Ex.: 12450"><label class="f" for="ot">Quando</label><input id="ot" name="ts" type="datetime-local" value="${esc(iso(Date.now()))}">${foot(false)}`);setTimeout(()=>{const x=$('#oo');if(x)x.focus()},60)}
 async function legAct(id,i,what){const d=S.days.find(x=>x.id===id);if(!d||!d.legs||!d.legs[i])return;const l=d.legs[i];const now=iso(Date.now());
@@ -452,17 +464,17 @@ form.addEventListener('submit',async ev=>{ev.preventDefault();const o=Object.fro
       await save();toast('Check-in: '+pl+' às '+hm(now)+(gpsFix?'':' (sem GPS)'))}
     if(kind==='vis'){const v=S.visits.find(x=>x.id===editId);if(!v)return;if(o.dep&&o.dep<o.arr)return msg('A saída não pode ser antes da chegada.');v.place=(o.place||'').trim()||v.place;v.arr=o.arr||v.arr;v.dep=o.dep||'';v.note=(o.note||'').trim();v.type=o.type||'';v.odo=num(o.odo)||null;v.photo=await storePhoto()||'';await save();toast('Atualizado')}
     if(kind==='day'){if(!o.date)return msg('Informe a data.');const F=new FormData(form),pn=F.getAll('pn'),pa=F.getAll('pa');const stops=pn.map((n,i)=>{const nm=String(n).trim().replace(/\|/g,'/'),ad=String(pa[i]||'').trim().replace(/\|/g,'/');return nm||ad?(nm||ad)+(ad?' || '+ad:''):''}).filter(Boolean).join('\n');const d={id:editId||('d'+o.date.replace(/-/g,'')+uid().slice(-3)),date:o.date,title:o.title.trim(),from:o.from.trim(),to:o.to.trim(),drive:o.drive.trim(),stay:o.stay.trim(),stops,notes:o.notes};const i=S.days.findIndex(x=>x.id===d.id);if(i>=0)S.days[i]=d;else S.days.push(d);await save();toast('Dia salvo')}
-    if(kind==='leg'){const d=S.days.find(x=>x.id===editId);if(!d)return;if(!(o.to||o.toAddr).trim())return msg('Informe o destino.');const old=legIdx>=0?d.legs[legIdx]:{};const nd=o.date||d.date;
+    if(kind==='leg'){const d=editId==='new'?{id:'new',legs:[]}:S.days.find(x=>x.id===editId);if(!d)return;if(!(o.to||o.toAddr).trim())return msg('Informe o destino.');const old=legIdx>=0?d.legs[legIdx]:{};const nd=o.date||d.date;if(!nd)return msg('Informe a data.');
       let tgt=S.days.find(x=>x.date===nd);if(!tgt){tgt={id:'d'+nd.replace(/-/g,'')+uid().slice(-3),date:nd,title:'',stops:'',legs:[]};S.days.push(tgt)}
       const at=t=>{const m=toMin(t);return m==null?'':isoAt(tgt,m)};const l={...old,from:o.from.trim(),fromAddr:o.fromAddr.trim(),to:o.to.trim(),toAddr:o.toAddr.trim(),dep:toMin(o.dep),kind:o.kind==='comp'?'comp':'prev',dur:toMin(o.dur),mode:o.mode||'RV',link:safeLink((o.link||'').trim()),cost:num(o.cost)||0,dist:num(o.dist)||0,actDep:at(o.actDep),actArr:at(o.actArr)};delete l.fixed;if(!l.id)l.id=uid();
       d.legs=d.legs||[];if(legIdx>=0)d.legs.splice(legIdx,1);tgt.legs=tgt.legs||[];if(legIdx>=0&&tgt===d)tgt.legs.splice(legIdx,0,l);else{tgt.legs.push(l);tgt.legs.sort((a,b)=>(plannedOf(a).pDep??9999)-(plannedOf(b).pDep??9999))}
-      [d,tgt].forEach(x=>{if((x.legs||[]).length&&(!x.title||x.title.includes('→')))x.title=retitle(x)});await save();toast('Trecho salvo');close();return}
+      [d,tgt].forEach(x=>{if((x.legs||[]).length&&(!x.title||x.title.includes('→')))x.title=retitle(x)});S.days=S.days.filter(x=>(x.legs||[]).length);await save();toast('Trecho salvo');close();return}
     if(kind==='odo'){const v=num(o.odo);if(!v)return msg('Informe o odômetro.');S.odo=S.odo||[];S.odo.push({id:uid(),ts:o.ts||iso(Date.now()),odo:v});await save();toast('Odômetro registrado');close();return}
     if(kind==='rv'){S.rv=S.rv||{};const r=S.rv[editId]||{};const ids=(r.photos||[]).filter(x=>!rvDel.includes(x));for(const b of pendingMany){const id='p'+uid();await idb.set('photos',id,b);ids.push(id)}rvDel.forEach(x=>idb.del('photos',x).catch(()=>{}));
       S.rv[editId]={when:o.when||'',odo:num(o.odo)||null,fuel:o.fuel||'',propane:o.propane||'',gen:num(o.gen)||null,notes:(o.notes||'').trim(),photos:ids};pendingMany=[];rvDel=[];await save();toast('Salvo');close();return}
     if(kind==='note'){const tx=(o.text||'').trim();if(!tx)return msg('Escreva alguma coisa.');S.notes=S.notes||[];const old=S.notes.find(x=>x.id===editId);const n={id:editId||uid(),text:tx,when:o.when||'',done:old?old.done:false,ts:Date.now()};const i=S.notes.findIndex(x=>x.id===n.id);if(i>=0)S.notes[i]=n;else S.notes.push(n);await save();toast(n.when?'Lembrete salvo':'Anotação salva');close();return}
     if(kind==='impx'){if(!importExp||!importExp.length)return close();const n=importExp.length;S.exp.push(...importExp);importExp=null;await save();toast(n+' gasto(s) importado(s)');close();return}
-    if(kind==='imp'){if(!importDays)return;S.days=importDays;importDays=null;await save();toast('Roteiro atualizado');close();location.hash='#roteiro';return}
+    if(kind==='imp'){if(!importDays)return;importDays.forEach(d=>{if(!(d.legs||[]).length){const L2=legacyToLegs(d);if(L2.length)d.legs=L2}});S.days=importDays;importDays=null;await save();toast('Roteiro atualizado');close();location.hash='#roteiro';return}
     if(kind==='stop'){const d=S.days.find(x=>x.id===editId);const nm=(o.name||'').trim().replace(/\|/g,'/'),ad=(o.addr||'').trim().replace(/\|/g,'/');if(!d||!nm)return msg('Informe o nome.');const L=lines(d.stops);L.splice(Math.min(+o.pos||0,L.length),0,nm+(ad?' || '+ad:''));await saveDay(d,L);toast('Parada adicionada')}
     close()}catch(e){msg('Não foi possível salvar: '+(e&&e.message||e))}});
 
@@ -622,9 +634,10 @@ document.addEventListener('click',async ev=>{const el=ev.target.closest('[data-a
   else if(a==='leg'){ev.preventDefault();openLeg(el.dataset.id,el.dataset.i)}
   else if(a==='lgdep'||a==='lgarr'){el.disabled=true;await legAct(el.dataset.id,+el.dataset.i,a==='lgdep'?'dep':'arr')}
   else if(a==='lmv'||a==='lrm'){const d=S.days.find(x=>x.id===el.dataset.id);if(!d||!d.legs)return;const i=+el.dataset.i;
-    if(a==='lrm'){if(!el.classList.contains('arm')){el.classList.add('arm');el.textContent='Excluir?';setTimeout(()=>{if(el.isConnected){el.classList.remove('arm');el.textContent='✕'}},3500);return}d.legs.splice(i,1)}
+    if(a==='lrm'){if(!el.classList.contains('arm')){el.classList.add('arm');el.textContent='Excluir?';setTimeout(()=>{if(el.isConnected){el.classList.remove('arm');el.textContent='✕'}},3500);return}d.legs.splice(i,1);if(!d.legs.length)S.days=S.days.filter(x=>x!==d)}
     else{const j=i+(+el.dataset.dir);if(j<0||j>=d.legs.length)return;[d.legs[i],d.legs[j]]=[d.legs[j],d.legs[i]]}if(!d.title||d.title.includes('→'))d.title=retitle(d)||d.title;await save()}
   else if(a==='dini'||a==='dfim'){const d=S.days.find(x=>x.id===el.dataset.id);if(!d)return;d.trip=d.trip||{};const now=iso(Date.now());if(a==='dini')d.trip.actDep=now;else d.trip.actArr=now;await save();toast((a==='dini'?'Início':'Término')+' às '+hm(now))}
+  else if(a==='newday')openLeg('new',-1);
   else if(a==='odo')openOdo();
   else if(a==='rvedit')openRV(el.dataset.k);
   else if(a==='rvdelph'){rvDel.push(el.dataset.id);el.closest('.th').remove()}
@@ -641,7 +654,7 @@ document.addEventListener('click',async ev=>{const el=ev.target.closest('[data-a
   else if(a==='delpt'){const r=el.closest('.pt');if($('#pts').children.length>1)r.remove();else r.querySelectorAll('input').forEach(i=>i.value='')}
   else if(a==='pick')form.elements['place'].value=el.dataset.v;
   else if(a==='del'){if(Date.now()-delArm>4000){delArm=Date.now();el.textContent='Toque de novo para excluir';return}
-    if(kind==='leg'){const d=S.days.find(x=>x.id===editId);if(d&&d.legs){d.legs.splice(legIdx,1);await save();toast('Trecho excluído');close()}return}
+    if(kind==='leg'){const d=S.days.find(x=>x.id===editId);if(d&&d.legs){d.legs.splice(legIdx,1);S.days=S.days.filter(x=>(x.legs||[]).length);await save();toast('Trecho excluído');close()}return}
     if(kind==='note')S.notes=(S.notes||[]).filter(x=>x.id!==editId);if(kind==='exp')S.exp=S.exp.filter(x=>x.id!==editId);if(kind==='vis')S.visits=S.visits.filter(x=>x.id!==editId);if(kind==='day')S.days=S.days.filter(x=>x.id!==editId);if(curPhoto&&kind!=='day')idb.del('photos',curPhoto).catch(()=>{});await save();toast('Excluído');close()}
   else if(a==='mv'||a==='rm'){const d=S.days.find(x=>x.id===el.dataset.id);if(!d)return;const L=lines(d.stops),i=+el.dataset.i;
     if(a==='rm'&&!el.classList.contains('arm')){el.classList.add('arm');el.textContent='Remover?';setTimeout(()=>{if(el.isConnected){el.classList.remove('arm');el.textContent='✕'}},3500);return}
@@ -667,6 +680,7 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden&&!sheet.cl
 /* ================= início ================= */
 (async()=>{try{const st=await idb.get('kv','state');if(st)S=st;else if(self.SEED){S=JSON.parse(JSON.stringify(self.SEED));await idb.set('kv','state',S)}}catch(e){toast('Este navegador não permite guardar dados')}
   (S.days||[]).forEach(d=>(d.legs||[]).forEach(l=>{if(l.fixed&&!l.kind){l.kind='comp';if(l.dep!=null)l.dep=l.dep+(l.dur||0)}delete l.fixed;if(!l.kind)l.kind='prev';if(!l.id)l.id=uid();if(/^rv$/i.test(l.mode)&&isUberLink(l.link))l.mode='Uber';l.mode=modeOf(l)}));
+  (S.days||[]).forEach(d=>{if(!(d.legs||[]).length){const L2=legacyToLegs(d);if(L2.length)d.legs=L2}});
   S.visits=S.visits||[];S.notes=S.notes||[];S.odo=S.odo||[];S.rv=S.rv||{};S.rates=S.rates||{};S.cfg=S.cfg||{rate:5.87};try{aiKey=(await idb.get('kv','apikey'))||''}catch(e){}render();
   try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}
   if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});fillRates();addEventListener('online',fillRates)})();
