@@ -1,5 +1,5 @@
 // Guarda o app no aparelho para abrir sem internet. Ao mudar arquivos, troque a versão.
-const CACHE = 'viagem-rv-v2';
+const CACHE = 'viagem-rv-v3';
 const FILES = ['./', './index.html', './manifest.webmanifest', './seed.js', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
@@ -17,6 +17,8 @@ self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   e.respondWith(
     fetch(e.request).then(r => {
+      // Só guarda e usa respostas boas; se o site der erro (ex.: 404), fica com a cópia salva.
+      if (!r.ok && r.type !== 'opaque') return caches.match(e.request, { ignoreSearch: true }).then(c => c || r);
       const cp = r.clone();
       caches.open(CACHE).then(c => c.put(e.request, cp));
       return r;
