@@ -206,6 +206,7 @@ function vGastos(){const L=days(),first=L[0]?.date||'9999',t=todayISO();let list
   list.sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(b.ts||0)-(a.ts||0));const g={};list.forEach(e=>{(g[e.date||'']=g[e.date||'']||[]).push(e)});
   const T=totals(S.exp),bud=num(S.cfg.budget);
   return `<button class="btn red huge" style="width:100%" data-act="exp">+ Gasto</button>
+  <div class="row" style="margin-top:10px"><label class="btn">Importar planilha<input type="file" id="impe" accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv" hidden></label><button class="btn" data-act="xle">Baixar em Excel</button></div>
   <div class="card"><div class="mut small">Total da viagem</div><div class="big">${esc(money(T.tot))}</div><div class="mut">${esc(money(T.tot*rate(),'BRL'))} a R$ ${esc(rate().toFixed(2).replace('.',','))}</div>
   ${bud?`<div class="meter"><i style="width:${Math.min(100,T.tot/bud*100).toFixed(1)}%;${T.tot>bud?'background:var(--red)':''}"></i></div><div class="small mut" style="margin-top:4px">${Math.round(T.tot/bud*100)}% do orçamento de ${esc(money(bud))}</div>`:''}
   ${T.by.length?`<h3 style="margin-top:14px">Por categoria</h3>${bars(T.by)}`:''}${T.bp.length?`<h3 style="margin-top:14px">Por forma de pagamento</h3>${bars(T.bp)}`:''}</div>
@@ -282,6 +283,7 @@ form.addEventListener('submit',async ev=>{ev.preventDefault();const o=Object.fro
     if(kind==='arr'){const pl=(o.place||'').trim();if(!pl)return msg('Diga onde você chegou.');const now=iso(Date.now());const ov=openVisit();if(ov){ov.dep=now;ov.depAuto=true}const ph=await storePhoto();S.visits.push({id:uid(),place:pl,arr:now,dep:'',note:(o.note||'').trim(),photo:ph||'',arrGps:gpsFix||null});await save();toast('Chegada em '+pl+' às '+hm(now))}
     if(kind==='vis'){const v=S.visits.find(x=>x.id===editId);if(!v)return;if(o.dep&&o.dep<o.arr)return msg('A saída não pode ser antes da chegada.');v.place=(o.place||'').trim()||v.place;v.arr=o.arr||v.arr;v.dep=o.dep||'';v.note=(o.note||'').trim();v.photo=await storePhoto()||'';await save();toast('Atualizado')}
     if(kind==='day'){if(!o.date)return msg('Informe a data.');const d={id:editId||('d'+o.date.replace(/-/g,'')+uid().slice(-3)),date:o.date,title:o.title.trim(),from:o.from.trim(),to:o.to.trim(),drive:o.drive.trim(),stay:o.stay.trim(),stops:o.stops,notes:o.notes};const i=S.days.findIndex(x=>x.id===d.id);if(i>=0)S.days[i]=d;else S.days.push(d);await save();toast('Dia salvo')}
+    if(kind==='impx'){if(!importExp||!importExp.length)return close();const n=importExp.length;S.exp.push(...importExp);importExp=null;await save();toast(n+' gasto(s) importado(s)');close();return}
     if(kind==='imp'){if(!importDays)return;S.days=importDays;importDays=null;await save();toast('Roteiro atualizado');close();location.hash='#roteiro';return}
     if(kind==='stop'){const d=S.days.find(x=>x.id===editId);const nm=(o.name||'').trim().replace(/\|/g,'/'),ad=(o.addr||'').trim().replace(/\|/g,'/');if(!d||!nm)return msg('Informe o nome.');const L=lines(d.stops);L.splice(Math.min(+o.pos||0,L.length),0,nm+(ad?' || '+ad:''));await saveDay(d,L);toast('Parada adicionada')}
     close()}catch(e){msg('Não foi possível salvar: '+(e&&e.message||e))}});
@@ -339,6 +341,34 @@ async function exportRoteiro(){const X=await loadXL();const L=days();
   const s3=X.utils.aoa_to_sheet([['Como usar'],['Aba Dias: uma linha por dia. Data no formato dd/mm/aaaa.'],['Aba Paradas: uma linha por parada, na ordem do dia. Com endereço, a parada vira um trecho de rota no Maps.'],['Para atualizar: edite, salve e no app vá em Roteiro → Importar planilha. O roteiro inteiro é substituído; gastos e chegadas ficam.']]);s3['!cols']=[{wch:110}];
   X.utils.book_append_sheet(wb,s1,'Dias');X.utils.book_append_sheet(wb,s2,'Paradas');X.utils.book_append_sheet(wb,s3,'Como usar');
   const buf=X.write(wb,{bookType:'xlsx',type:'array'});await deliver(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),'roteiro-viagem-'+stamp()+'.xlsx')}
+
+/* ================= gastos em Excel ================= */
+const ECOLS={date:['data','date','dia'],cat:['categoria','category','tipo'],desc:['descricao','estabelecimento','historico','description','local'],amt:['valor','amount','preco','valorpago'],cur:['moeda','currency'],pay:['pagamento','formadepagamento','meiodepagamento','cartao','payment']};
+const xlNum=v=>{if(typeof v==='number')return v;let s=String(v??'').replace(/[^\d,.\-]/g,'');if(s.includes(',')&&s.includes('.'))s=s.lastIndexOf(',')>s.lastIndexOf('.')?s.replace(/\./g,'').replace(',','.'):s.replace(/,/g,'');else if(s.includes(','))s=s.replace(',','.');const n=parseFloat(s);return isFinite(n)?n:0};
+const catFrom=v=>{const n=norm(v);if(!n)return 'out';const c=CATS.find(c=>norm(c[0])===n||norm(c[1])===n)||CATS.find(c=>norm(c[1]).startsWith(n)||n.startsWith(norm(c[1]).slice(0,6)));return c?c[0]:'out'};
+const payFrom=v=>{const n=norm(v);if(!n)return 'Cartão de crédito';const ex=PAYS.find(p=>norm(p)===n);if(ex)return ex;if(n.includes('chase'))return 'Cartão de crédito Chase (EUA)';if(n.includes('wise')||n.includes('nomad')||n.includes('global'))return 'Cartão global (Wise/Nomad)';if(n.includes('dinheiro')||n.includes('cash'))return 'Dinheiro';if(n.includes('pix')||n.includes('transf')||n.includes('zelle'))return 'Pix/transferência';if(n.includes('cartao')||n.includes('credito')||n.includes('card'))return 'Cartão de crédito';return 'Outro'};
+const curFrom=v=>{const n=norm(v);return (n==='brl'||n==='r'||n==='real'||n==='reais')?'BRL':'USD'};
+const expKey=e=>(e.date||'')+'|'+num(e.amt).toFixed(2)+'|'+e.cur;
+let importExp=null;
+async function parseGastos(file){const X=await loadXL();const wb=X.read(await file.arrayBuffer(),{type:'array'});
+  for(const n of wb.SheetNames){const rows=X.utils.sheet_to_json(wb.Sheets[n],{header:1,raw:true,defval:''});
+    for(let i=0;i<Math.min(rows.length,15);i++){const ix={};rows[i].forEach((c,k)=>{const nn=norm(c);for(const[key,al]of Object.entries(ECOLS))if(ix[key]===undefined&&al.includes(nn))ix[key]=k});
+      if(ix.date===undefined||ix.amt===undefined)continue;const out=[];
+      for(const r of rows.slice(i+1)){if(r.every(c=>String(c).trim()===''))break;const date=xlDate(r[ix.date]);const amt=xlNum(r[ix.amt]);if(!date||!(amt>0))continue;
+        const g=k=>ix[k]===undefined?'':String(r[ix[k]]??'').trim();out.push({id:'imp'+uid(),amt:+amt.toFixed(2),cur:curFrom(g('cur')),cat:catFrom(g('cat')),desc:g('desc').slice(0,120),date,pay:payFrom(g('pay')),photo:'',ts:Date.now()})}
+      if(out.length)return out}}
+  throw new Error('Não achei as colunas "Data" e "Valor". Use o modelo baixado pelo app.')}
+async function onImportExp(file){try{toast('Lendo planilha…');const all=await parseGastos(file);const have=new Set(S.exp.map(expKey));const novos=[],dup=[];all.forEach(e=>{const k=expKey(e);if(have.has(k))dup.push(e);else{novos.push(e);have.add(k)}});importExp=novos;kind='impx';editId='';
+  const li=(e,c)=>`<li><span>${esc(fd(e.date,{day:'2-digit',month:'short',year:'2-digit'}))} · ${esc(e.desc||cat(e.cat)[1])} <span class="small mut">${esc(cat(e.cat)[1])} · ${esc(e.pay)}</span></span><b style="white-space:nowrap${c?';color:var(--mut)':''}">${esc(money(e.amt,e.cur))}</b></li>`;
+  open(`<h2>Importar gastos</h2><p>${novos.length} gasto(s) novo(s)${dup.length?` · ${dup.length} já estava(m) no app e será(ão) ignorado(s)`:''}.</p>
+  ${novos.length?`<ol class="stops">${novos.map(e=>li(e)).join('')}</ol>`:''}${dup.length?`<p class="small mut" style="margin-top:12px">Já no app (mesma data, valor e moeda):</p><ol class="stops">${dup.map(e=>li(e,1)).join('')}</ol>`:''}
+  <p class="small mut">Confira categorias e formas de pagamento; dá para corrigir depois tocando no gasto.</p><div class="row" style="margin-top:16px">${novos.length?`<button class="btn pri" type="submit">Importar ${novos.length} gasto(s)</button>`:''}<button class="btn" type="button" data-act="close">${novos.length?'Cancelar':'Fechar'}</button></div><p class="small mut" id="fmsg"></p>`)}
+  catch(e){toast(e.message||'Não consegui ler a planilha')}}
+async function exportGastos(){const X=await loadXL();const L=[...S.exp].sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  const aoa=[['Data','Categoria','Descrição','Valor','Moeda','Pagamento','US$','R$']].concat(L.map(e=>[e.date?e.date.split('-').reverse().join('/'):'',cat(e.cat)[1],e.desc,num(e.amt),e.cur,e.pay,+usd(e).toFixed(2),+brl(e).toFixed(2)]));
+  const wb=X.utils.book_new();const s=X.utils.aoa_to_sheet(aoa);s['!cols']=[{wch:11},{wch:28},{wch:50},{wch:12},{wch:7},{wch:30},{wch:12},{wch:12}];X.utils.book_append_sheet(wb,s,'Gastos');
+  const s2=X.utils.aoa_to_sheet([['Como usar'],['Uma linha por gasto. Data dd/mm/aaaa. Moeda: USD ou BRL. Colunas US$ e R$ são só informativas (o app recalcula).'],['Categorias: '+CATS.map(c=>c[1]).join(' · ')],['Pagamento: '+PAYS.join(' · ')],['No app: Gastos → Importar planilha. Gastos com mesma data, valor e moeda que já existem são ignorados.']]);s2['!cols']=[{wch:120}];X.utils.book_append_sheet(wb,s2,'Como usar');
+  await deliver(new Blob([X.write(wb,{bookType:'xlsx',type:'array'})],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),'gastos-viagem-'+stamp()+'.xlsx')}
 
 /* ================= exportação ================= */
 async function deliver(blob,name){const f=new File([blob],name,{type:blob.type});
@@ -398,6 +428,7 @@ document.addEventListener('click',async ev=>{const el=ev.target.closest('[data-a
     if(a==='mv'){const j=i+(+el.dataset.dir);if(j<0||j>=L.length)return;[L[i],L[j]]=[L[j],L[i]]}else L.splice(i,1);await saveDay(d,L)}
   else if(a==='fw'){fWhen=el.dataset.k;render()}
   else if(a==='report'){el.disabled=true;el.textContent='Montando relatório…';try{await deliver(await buildReport(),'relatorio-viagem-'+stamp()+'.html')}catch(e){toast('Erro ao montar relatório')}render()}
+  else if(a==='xle'){el.disabled=true;try{await exportGastos()}catch(e){toast(e.message||'Erro ao gerar planilha')}el.disabled=false}
   else if(a==='xlx'){el.disabled=true;try{await exportRoteiro()}catch(e){toast(e.message||'Erro ao gerar planilha')}el.disabled=false}
   else if(a==='csv')deliver(new Blob([csvExp()],{type:'text/csv'}),'gastos-viagem-'+stamp()+'.csv');
   else if(a==='csvv')deliver(new Blob([csvVis()],{type:'text/csv'}),'lugares-tempos-'+stamp()+'.csv');
@@ -405,6 +436,7 @@ document.addEventListener('click',async ev=>{const el=ev.target.closest('[data-a
 document.addEventListener('change',ev=>{const t=ev.target;if(t.dataset.act==='fc'){fCat=t.value;render()}
   if(t.id==='restore'&&t.files[0])restore(t.files[0]);
   if(t.id==='impx'&&t.files[0]){onImportFile(t.files[0]);t.value=''}
+  if(t.id==='impe'&&t.files[0]){onImportExp(t.files[0]);t.value=''}
   if(t.dataset.cfg){const v=num(t.value);if(t.dataset.cfg==='rate'&&!v){toast('Câmbio inválido');return}S.cfg[t.dataset.cfg]=v;t.blur();save();toast('Atualizado')}});
 document.addEventListener('keydown',ev=>{if(ev.key==='Escape'&&sheet.classList.contains('open'))close()});
 sheet.addEventListener('click',ev=>{if(ev.target===sheet)close()});
