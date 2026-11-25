@@ -183,8 +183,8 @@ function milesCard(date){const m=milesInfo(date);const pct=m.acc!=null?m.acc/m.i
 /* cotação do dia (USD→BRL, comercial) */
 const ymd=s=>s.replace(/-/g,'');
 async function fetchRate(date){S.rates=S.rates||{};if(S.rates[date])return S.rates[date];const t=todayISO();const q=!date||date>t?'latest':date;
-  try{const r=await fetch('https://api.frankfurter.app/'+q+'?from=USD&to=BRL');if(r.ok){const j=await r.json();const v=j&&j.rates&&j.rates.BRL;if(v){if(q!=='latest')S.rates[date]=v;return v}}}catch(e){}
   try{const d0=new Date((q==='latest'?t:date)+'T12:00');const st=new Date(d0.getTime()-6*864e5).toISOString().slice(0,10);const r=await fetch('https://economia.awesomeapi.com.br/json/daily/USD-BRL/?start_date='+ymd(st)+'&end_date='+ymd(q==='latest'?t:date));if(r.ok){const j=await r.json();const v=j&&j[0]&&parseFloat(j[0].bid);if(v){if(q!=='latest')S.rates[date]=v;return v}}}catch(e){}
+  try{const r=await fetch('https://api.frankfurter.app/'+q+'?from=USD&to=BRL');if(r.ok){const j=await r.json();const v=j&&j.rates&&j.rates.BRL;if(v){if(q!=='latest')S.rates[date]=v;return v}}}catch(e){}
   return null}
 let ratesBusy=false;
 async function fillRates(){if(ratesBusy||!navigator.onLine)return;ratesBusy=true;let ch=0;try{const pend=S.exp.filter(e=>!e.rate&&e.date);const dates=[...new Set(pend.map(e=>e.date))];for(const dt of dates){const v=await fetchRate(dt);if(v){S.exp.forEach(e=>{if(!e.rate&&e.date===dt){e.rate=v;ch++}})}}}finally{ratesBusy=false}if(ch)save()}
