@@ -116,6 +116,13 @@ const stopsOf=d=>lines(d.stops).map(stopOf);
 const mapq=q=>'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(q);
 const mapll=(la,lo)=>'https://www.google.com/maps/search/?api=1&query='+la+','+lo;
 const routeOK=d=>!!(d.from&&d.to&&(d.from!==d.to||stopsOf(d).some(s=>s.addr)));
+const legsOf=d=>{const P=[];const add=(n,a)=>{if(!a||(P.length&&P[P.length-1].addr===a))return;P.push({name:n,addr:a})};add(d.from,d.from);stopsOf(d).filter(s=>s.addr).forEach(s=>add(s.name,s.addr));add(d.to,d.to);const L=[];for(let i=1;i<P.length;i++)L.push({a:P[i-1],b:P[i]});return L};
+const legURL=(a,b)=>'https://www.google.com/maps/dir/?api=1&origin='+encodeURIComponent(a)+'&destination='+encodeURIComponent(b)+'&travelmode=driving';
+const navURL=b=>'https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(b)+'&travelmode=driving';
+const legDone=(l,date)=>!!S.visits.find(v=>(v.arr||'').slice(0,10)===date&&(v.place===l.b.name||v.place===l.b.addr));
+function legsHTML(d,hoje){const L=legsOf(d);if(!L.length)return '';const nx=L.findIndex(l=>!legDone(l,d.date));
+  return `${hoje&&nx>=0?`<div class="card" style="border-color:var(--blue)"><div class="small mut">Próximo trecho ${nx+1} de ${L.length}</div><b style="font-size:20px">${esc(L[nx].b.name)}</b><div class="small mut">saindo de ${esc(L[nx].a.name)}</div><div class="row" style="margin-top:10px"><a class="btn blue" href="${esc(navURL(L[nx].b.addr))}" target="_blank" rel="noopener">Navegar daqui até lá</a><a class="btn" href="${esc(legURL(L[nx].a.addr,L[nx].b.addr))}" target="_blank" rel="noopener">Ver trecho</a></div></div>`:''}
+  <div class="small" style="margin-top:10px;font-weight:600">Trechos</div><ol class="stops">${L.map((l,i)=>`<li><span>${legDone(l,d.date)?'<b style="color:var(--gtxt)">✓</b> ':''}${i+1}. ${esc(l.a.name)} → ${esc(l.b.name)}</span><a class="ib" style="display:grid;place-items:center;text-decoration:none" href="${esc(legURL(l.a.addr,l.b.addr))}" target="_blank" rel="noopener">Rota</a></li>`).join('')}</ol>`}
 const dayRoute=d=>{const w=stopsOf(d).filter(s=>s.addr).map(s=>s.addr).slice(0,9);return 'https://www.google.com/maps/dir/?api=1&origin='+encodeURIComponent(d.from)+'&destination='+encodeURIComponent(d.to)+(w.length?'&waypoints='+encodeURIComponent(w.join('|')):'')+'&travelmode=driving'};
 function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove('on'),2800)}
 
@@ -171,10 +178,10 @@ function vHoje(){const w=where(),L=w.L;
   <div class="signwrap"><div class="sign"><div><div class="k">${moving?'Próximo destino':'Hoje em'}</div><div class="dest">${esc(d.to||d.title||'—')}</div><div class="meta">${esc(d.drive||'')}${d.stay?`${d.drive?' · ':''}Pernoite: ${esc(d.stay)}`:''}</div></div>
   <svg viewBox="0 0 80 80" aria-hidden="true"><path d="M18 62 L56 24" stroke="#fff" stroke-width="10"/><path d="M30 20 H60 V50" fill="none" stroke="#fff" stroke-width="10"/></svg></div><i class="post a"></i><i class="post b"></i></div>
   ${statusBox()}
-  <div class="row">${routeOK(d)?`<a class="btn blue" href="${esc(dayRoute(d))}" target="_blank" rel="noopener">Rota no Maps</a>`:''}<button class="btn red" data-act="exp">+ Gasto</button></div>
+  <button class="btn red" style="width:100%" data-act="exp">+ Gasto</button>${(()=>{const L=legsOf(d),nx=L.findIndex(l=>!legDone(l,d.date));return nx>=0?legsHTML(d,true).split('<div class="small" style="margin-top:10px;font-weight:600">Trechos</div>')[0]:''})()}
   <div class="card"><h3>${esc(d.title||'Programação')}</h3>${moving?`<p class="mut small" style="margin:4px 0 0">${esc(d.from)} → ${esc(d.to)}</p>`:''}
    ${st.length?`<ul class="stops">${st.map(s=>{const v=visitOf(s.name,d.date);return `<li><span>${v?'<b style="color:var(--gtxt)">✓</b> ':''}${esc(s.name)}${v?` <span class="small mut">${esc(hm(v.arr))}${v.dep?' · '+esc(dur(ms(v.arr,v.dep))):' · agora'}</span>`:''}</span>${v?'':`<button class="ib go" data-act="arrq" data-place="${esc(s.name)}">Cheguei</button>`}</li>`}).join('')}</ul>`:''}
-   ${d.notes?`<p class="small mut" style="white-space:pre-line">${esc(d.notes)}</p>`:''}
+   ${legsHTML(d,false)}${d.notes?`<p class="small mut" style="white-space:pre-line">${esc(d.notes)}</p>`:''}
    <div class="row" style="margin-top:10px"><button class="btn" data-act="stop" data-id="${esc(d.id)}">+ Parada</button><button class="btn" data-act="day" data-id="${esc(d.id)}">Editar dia</button></div></div>
   ${w.next&&w.cur?`<p class="mut small">Amanhã: <b>${esc(w.next.title||w.next.to)}</b>${w.next.drive?' · '+esc(w.next.drive):''}</p>`:''}
   <div class="card"><div class="mut small">Gasto hoje</div><div class="big">${esc(money(te.reduce((s,e)=>s+usd(e),0)))}</div><div class="mut small">${te.length} lançamento(s) · viagem ${esc(money(S.exp.reduce((s,e)=>s+usd(e),0)))}</div></div>`}
@@ -182,12 +189,12 @@ function vHoje(){const w=where(),L=w.L;
 function vRoteiro(){const L=days(),t=todayISO();const seq=[];L.forEach(d=>{if(d.from&&!seq.length)seq.push(d.from);if(d.to&&seq[seq.length-1]!==d.to)seq.push(d.to)});
   const full=seq.length>2?'https://www.google.com/maps/dir/?api=1&origin='+encodeURIComponent(seq[0])+'&destination='+encodeURIComponent(seq[seq.length-1])+'&waypoints='+encodeURIComponent(seq.slice(1,-1).slice(0,9).join('|'))+'&travelmode=driving':'';
   return `<div class="row" style="margin-bottom:6px">${full?`<a class="btn blue" href="${esc(full)}" target="_blank" rel="noopener">Rota completa no Maps</a>`:''}<button class="btn pri" data-act="day">+ Dia</button></div>
-  <p class="small mut">Tempos de estrada são estimativas de carro; o RV leva mais. Paradas “na rota” entram no trajeto do dia.</p>
+  <p class="small mut">Tempos de estrada são estimativas de carro; o RV leva mais. Cada trecho abre separado no Maps: saída → parada → parada → destino. Paradas sem endereço não viram trecho.</p>
   ${L.map((d,i)=>{const st=stopsOf(d);return `<article class="day ${d.date===t?'now':''}"><div class="d">${esc(fd(d.date,{day:'2-digit'}))}<small>${esc(fd(d.date,{month:'short'}))} · ${esc(fd(d.date,{weekday:'short'}))}</small></div>
    <div><h3>${esc(d.title||'Dia '+(i+1))}</h3>${d.from&&d.to&&d.from!==d.to?`<div class="small mut">${esc(d.from)} → ${esc(d.to)}</div>`:''}${d.drive?`<span class="drive">${esc(d.drive)}</span>`:''}
    ${st.length?`<ol class="stops">${st.map((s,j)=>{const v=visitOf(s.name,d.date);return `<li><span>${v?'<b style="color:var(--gtxt)">✓</b> ':''}${esc(s.name)}${s.addr?' <span class="tag">na rota</span>':''}${v&&v.dep?` <span class="small mut">${esc(dur(ms(v.arr,v.dep)))}</span>`:''}</span><span class="sb"><button class="ib" data-act="mv" data-id="${esc(d.id)}" data-i="${j}" data-dir="-1" aria-label="Subir" ${j?'':'disabled'}>↑</button><button class="ib" data-act="mv" data-id="${esc(d.id)}" data-i="${j}" data-dir="1" aria-label="Descer" ${j<st.length-1?'':'disabled'}>↓</button><button class="ib" data-act="rm" data-id="${esc(d.id)}" data-i="${j}" aria-label="Remover">✕</button></span></li>`}).join('')}</ol>`:''}
    ${d.stay?`<div class="small" style="margin-top:6px"><b>Pernoite:</b> ${esc(d.stay)}</div>`:''}${d.notes?`<div class="small mut" style="white-space:pre-line;margin-top:4px">${esc(d.notes)}</div>`:''}
-   <div class="acts">${routeOK(d)?`<a class="btn" href="${esc(dayRoute(d))}" target="_blank" rel="noopener">Rota</a>`:''}<button class="btn" data-act="stop" data-id="${esc(d.id)}">+ Parada</button><button class="btn" data-act="day" data-id="${esc(d.id)}">Editar</button></div></div></article>`}).join('')||'<div class="empty">Sem dias.</div>'}`}
+   ${legsHTML(d,false)}<div class="acts"><button class="btn" data-act="stop" data-id="${esc(d.id)}">+ Parada</button><button class="btn" data-act="day" data-id="${esc(d.id)}">Editar</button></div></div></article>`}).join('')||'<div class="empty">Sem dias.</div>'}`}
 
 let fCat='all',fWhen='all';
 function totals(list){const tot=list.reduce((s,e)=>s+usd(e),0);const by=CATS.map(c=>[c[1],list.filter(e=>e.cat===c[0]).reduce((s,e)=>s+usd(e),0),c[2]]).filter(x=>x[1]>0).sort((a,b)=>b[1]-a[1]);
@@ -216,6 +223,8 @@ function vArquivo(){const sa=window.matchMedia('(display-mode: standalone)').mat
   <button class="btn" style="width:100%;margin-top:10px" data-act="csv">Baixar planilha de gastos (CSV)</button><button class="btn" style="width:100%;margin-top:10px" data-act="csvv">Baixar planilha de lugares e tempos (CSV)</button></div>
   <div class="card"><h3>Backup</h3><p class="small mut">${bk?'Último backup: '+esc(fd(bk,{day:'2-digit',month:'short'}))+' às '+esc(hm(bk)):'Nenhum backup ainda.'} Salve no iCloud Drive ou mande para o seu e-mail. Se perder o iPhone, você restaura em outro aparelho.</p>
   <button class="btn blue" style="width:100%" data-act="backup">Fazer backup agora</button><label class="btn" style="width:100%;margin-top:10px">Restaurar backup<input type="file" id="restore" accept=".json,application/json" hidden></label></div>
+  <div class="card"><h3>Leitura de cupom com IA</h3><p class="small mut">${aiKey?'Chave cadastrada (termina em …'+esc(aiKey.slice(-4))+'). ':''}Usa a sua chave da API da Claude (console.anthropic.com). A chave fica só neste iPhone: não vai para o GitHub nem para o backup. Cada cupom custa uma fração de centavo de dólar.</p>
+  <input id="aik" type="password" autocomplete="off" placeholder="sk-ant-…" value=""><div class="row" style="margin-top:10px"><button class="btn pri" data-act="aikey">Salvar chave</button>${aiKey?'<button class="btn" data-act="aikey" onclick="document.getElementById(\'aik\').value=\'\'">Remover chave</button>':''}</div></div>
   <div class="card"><h3>Câmbio e orçamento</h3><div class="two"><div><label class="f" for="rt">R$ por US$</label><input id="rt" inputmode="decimal" value="${esc(String(S.cfg.rate).replace('.',','))}" data-cfg="rate"></div><div><label class="f" for="bd">Orçamento (US$)</label><input id="bd" inputmode="decimal" value="${S.cfg.budget?esc(String(S.cfg.budget).replace('.',',')):''}" placeholder="opcional" data-cfg="budget"></div></div><p class="small mut">Use a taxa efetiva que você paga (com IOF no cartão brasileiro).</p></div>
   <p class="small mut" id="stor"></p>`}
 
@@ -237,7 +246,7 @@ function openExp(id){const e=S.exp.find(x=>x.id===id)||{};kind='exp';editId=e.id
   <label class="f">Categoria</label><div class="chips">${CATS.map(c=>`<label class="chip"><input type="radio" name="cat" value="${c[0]}" ${(e.cat||'rest')===c[0]?'checked':''}>${esc(c[1])}</label>`).join('')}</div>
   <label class="f" for="desc">Descrição</label><input id="desc" name="desc" value="${esc(e.desc||'')}" placeholder="Ex.: Diesel Love's, jantar">
   <div class="two"><div><label class="f" for="date">Data</label><input id="date" name="date" type="date" value="${esc(d)}"></div><div><label class="f" for="pay">Pagamento</label><select id="pay" name="pay">${PAYS.map(p=>`<option ${e.pay===p?'selected':''}>${esc(p)}</option>`).join('')}</select></div></div>
-  ${photoField(e.photo)}${foot(!!e.id)}`);hydratePhotos();setTimeout(()=>{if(!e.id&&form.amt)form.amt.focus()},60)}
+  ${photoField(e.photo)}${aiKey?`<button class="btn blue" type="button" data-act="ai" style="width:100%;margin-top:10px">Ler cupom com IA</button>`:`<p class="small mut">Para a IA ler o cupom, cadastre a chave na aba Arquivo.</p>`}${foot(!!e.id)}`);hydratePhotos();setTimeout(()=>{if(!e.id&&form.elements['amt'])form.elements['amt'].focus()},60)}
 function openArr(){kind='arr';editId='';curPhoto='';const w=where(),d=w.cur||w.next;const sug=d?[...new Set([...stopsOf(d).filter(s=>!visitOf(s.name,d.date)).map(s=>s.name),d.to,d.stay].filter(Boolean))]:[];
   open(`<h2>Cheguei</h2><label class="f" for="place">Onde?</label><input id="place" name="place" placeholder="Ex.: posto Love's, Walmart">
   ${sug.length?`<div class="chips" style="margin-top:8px">${sug.map(s=>`<button type="button" class="chip" data-act="pick" data-v="${esc(s)}">${esc(s)}</button>`).join('')}</div>`:''}
@@ -264,7 +273,7 @@ function openStop(id){const d=S.days.find(x=>x.id===id);if(!d)return;kind='stop'
   <label class="f" for="sp">Posição</label><select id="sp" name="pos">${st.map((s,j)=>`<option value="${j}">Antes de: ${esc(s.name)}</option>`).join('')}<option value="${st.length}" selected>No final</option></select>${foot(false)}`)}
 const saveDay=(d,L)=>{d.stops=L.join('\n');return save()};
 
-form.addEventListener('change',async ev=>{if(ev.target.id!=='ph')return;const f=ev.target.files[0];if(!f)return;pending=await shrink(f,1600,.8);if(pendingUrl)URL.revokeObjectURL(pendingUrl);pendingUrl=URL.createObjectURL(pending);const p=$('#pv');p.src=pendingUrl;p.hidden=false});
+form.addEventListener('change',async ev=>{if(ev.target.id!=='ph')return;const f=ev.target.files[0];if(!f)return;pending=await shrink(f,1600,.8);if(pendingUrl)URL.revokeObjectURL(pendingUrl);pendingUrl=URL.createObjectURL(pending);const p=$('#pv');p.src=pendingUrl;p.hidden=false;if(kind==='exp'&&aiKey&&!num(form.elements['amt']&&form.elements['amt'].value)){readReceipt(form.querySelector('[data-act=ai]'))}});
 async function storePhoto(){if(!pending)return curPhoto;const id='p'+uid();await idb.set('photos',id,pending);return id}
 form.addEventListener('submit',async ev=>{ev.preventDefault();const o=Object.fromEntries(new FormData(form).entries());const msg=t=>{$('#fmsg').textContent=t};
   try{
@@ -274,6 +283,27 @@ form.addEventListener('submit',async ev=>{ev.preventDefault();const o=Object.fro
     if(kind==='day'){if(!o.date)return msg('Informe a data.');const d={id:editId||('d'+o.date.replace(/-/g,'')+uid().slice(-3)),date:o.date,title:o.title.trim(),from:o.from.trim(),to:o.to.trim(),drive:o.drive.trim(),stay:o.stay.trim(),stops:o.stops,notes:o.notes};const i=S.days.findIndex(x=>x.id===d.id);if(i>=0)S.days[i]=d;else S.days.push(d);await save();toast('Dia salvo')}
     if(kind==='stop'){const d=S.days.find(x=>x.id===editId);const nm=(o.name||'').trim().replace(/\|/g,'/'),ad=(o.addr||'').trim().replace(/\|/g,'/');if(!d||!nm)return msg('Informe o nome.');const L=lines(d.stops);L.splice(Math.min(+o.pos||0,L.length),0,nm+(ad?' || '+ad:''));await saveDay(d,L);toast('Parada adicionada')}
     close()}catch(e){msg('Não foi possível salvar: '+(e&&e.message||e))}});
+
+/* ================= leitura de cupom com IA (Claude API, chave fica só no aparelho) ================= */
+let aiKey='';
+async function receiptBlob(){if(pending)return pending;if(curPhoto){try{return await idb.get('photos',curPhoto)}catch(e){}}return null}
+async function readReceipt(btn){const msg=t=>{const m=$('#fmsg');if(m)m.textContent=t};const blob=await receiptBlob();if(!blob)return msg('Tire ou escolha a foto do cupom primeiro.');if(!aiKey)return msg('Cadastre a chave da IA na aba Arquivo.');
+  if(btn){btn.disabled=true;btn.textContent='Lendo o cupom…'}
+  try{const small=await shrink(blob,1568,.85);const b64=(await toData(small)).split(',')[1];
+    const prompt=`Você lê cupons fiscais, recibos e notas de compra de uma viagem de motorhome nos EUA. Na imagem, encontre o TOTAL efetivamente pago (com impostos e gorjeta, se houver), a moeda, o nome do estabelecimento e a data. Classifique em uma destas categorias pelo código: ${CATS.map(c=>c[0]+' = '+c[1]).join('; ')}. Se aparecer forma de pagamento, diga se foi cartão ou dinheiro. Responda SOMENTE com JSON: {"total": número ou null, "moeda": "USD" ou "BRL", "estabelecimento": texto, "data": "AAAA-MM-DD" ou null, "categoria": código, "pagamento": "cartao" ou "dinheiro" ou null}`;
+    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':aiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-haiku-5-5',max_tokens:300,messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}},{type:'text',text:prompt}]}]})});
+    if(!r.ok){const t=r.status===401?'Chave da IA inválida. Confira na aba Arquivo.':(r.status===429||r.status===529?'Serviço ocupado; tente de novo em instantes.':(r.status===400?'Sem crédito na conta da IA ou foto ilegível.':'Erro da IA ('+r.status+').'));throw new Error(t)}
+    const j=await r.json();const txt=(j.content||[]).map(c=>c.text||'').join('');const m=txt.match(/\{[\s\S]*\}/);if(!m)throw new Error('A IA não conseguiu ler este cupom.');const o=JSON.parse(m[0]);
+    if(!form.elements['amt'])return;
+    if(typeof o.total==='number'&&o.total>0)form.elements['amt'].value=String(o.total).replace('.',',');
+    if(o.moeda==='BRL'||o.moeda==='USD')form.elements['cur'].value=o.moeda;
+    if(typeof o.estabelecimento==='string'&&o.estabelecimento&&!form.elements['desc'].value)form.elements['desc'].value=o.estabelecimento.slice(0,80);
+    if(typeof o.data==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(o.data))form.elements['date'].value=o.data;
+    const cc=CATS.find(c=>c[0]===o.categoria);if(cc){const rb=form.querySelector(`input[name=cat][value="${cc[0]}"]`);if(rb)rb.checked=true}
+    if(o.pagamento==='dinheiro')form.elements['pay'].value='Dinheiro';
+    msg(typeof o.total==='number'?'Lido pela IA. Confira o valor e a forma de pagamento antes de salvar.':'Não achei o total; digite o valor.')}
+  catch(e){msg(e instanceof TypeError?'Sem internet agora. Salve com a foto e use “Ler cupom” depois, abrindo o gasto.':(e.message||'Erro na leitura.'))}
+  if(btn&&btn.isConnected){btn.disabled=false;btn.textContent='Ler cupom com IA'}}
 
 /* ================= exportação ================= */
 async function deliver(blob,name){const f=new File([blob],name,{type:blob.type});
@@ -323,7 +353,9 @@ document.addEventListener('click',async ev=>{const el=ev.target.closest('[data-a
   else if(a==='day')openDay(el.dataset.id);
   else if(a==='stop')openStop(el.dataset.id);
   else if(a==='close')close();
-  else if(a==='pick')form.place.value=el.dataset.v;
+  else if(a==='ai')readReceipt(el);
+  else if(a==='aikey'){const v=($('#aik').value||'').trim();if(v&&!/^sk-ant-/.test(v)){toast('A chave começa com sk-ant-');return}aiKey=v;try{await idb.set('kv','apikey',v)}catch(e){}toast(v?'Chave salva neste iPhone':'Chave removida');render()}
+  else if(a==='pick')form.elements['place'].value=el.dataset.v;
   else if(a==='del'){if(Date.now()-delArm>4000){delArm=Date.now();el.textContent='Toque de novo para excluir';return}
     if(kind==='exp')S.exp=S.exp.filter(x=>x.id!==editId);if(kind==='vis')S.visits=S.visits.filter(x=>x.id!==editId);if(kind==='day')S.days=S.days.filter(x=>x.id!==editId);if(curPhoto&&kind!=='day')idb.del('photos',curPhoto).catch(()=>{});await save();toast('Excluído');close()}
   else if(a==='mv'||a==='rm'){const d=S.days.find(x=>x.id===el.dataset.id);if(!d)return;const L=lines(d.stops),i=+el.dataset.i;
@@ -345,7 +377,7 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden&&!sheet.cl
 
 /* ================= início ================= */
 (async()=>{try{const st=await idb.get('kv','state');if(st)S=st;else if(self.SEED){S=JSON.parse(JSON.stringify(self.SEED));await idb.set('kv','state',S)}}catch(e){toast('Este navegador não permite guardar dados')}
-  S.visits=S.visits||[];S.cfg=S.cfg||{rate:5.87};render();
+  S.visits=S.visits||[];S.cfg=S.cfg||{rate:5.87};try{aiKey=(await idb.get('kv','apikey'))||''}catch(e){}render();
   try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}
   if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{})})();
 }
