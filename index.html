@@ -82,9 +82,16 @@ nav a{font-size:11px}
 .warn{background:light-dark(#fff4e0,#33260f);border-radius:12px;padding:10px 14px;font-size:14px;margin:10px 0}
 @media(max-width:520px){.bar{grid-template-columns:minmax(0,7em) minmax(0,1fr) auto}.day{grid-template-columns:50px minmax(0,1fr)}.day .d{font-size:26px}.leg{margin-left:20px}}
 @media(prefers-reduced-motion:reduce){.toast{transition:none}}
+.lg{padding:12px 0;border-top:1px solid var(--line)}.lg.next{background:light-dark(#eef3fc,#152038);border-radius:12px;padding:12px;border:0;margin:6px 0}.lg.done{opacity:.75}
+.lg .tt{font-weight:800}.lg .tm{font-size:14px;margin-top:2px}.lg .acts2{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.lg .acts2 a,.lg .acts2 button{min-height:40px;font-size:14px;padding:8px 12px}
+.tagr{font-size:12px;font-weight:700;border-radius:6px;padding:1px 6px;white-space:nowrap}.tagr.late{background:light-dark(#fde5e5,#3a1414);color:var(--red)}.tagr.ok{background:var(--green2);color:var(--gtxt)}.tagr.fix{background:light-dark(#fff1d6,#33260f);color:light-dark(#8a5a00,#f0c46b)}
+.strike{text-decoration:line-through;color:var(--mut)}
+.hdrbtn{display:inline-grid;place-items:center;width:44px;height:44px;border-radius:12px;background:var(--soft);color:var(--ink)}.hdrbtn svg{width:22px;height:22px}
+.thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:6px;margin-top:8px}.thumbs img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px;display:block}.thumbs .th{position:relative}.thumbs .th button{position:absolute;top:4px;right:4px;width:28px;height:28px;border-radius:8px;border:0;background:rgba(0,0,0,.6);color:#fff}
+.kv{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 12px;font-size:15px}.kv b{font-weight:600}
 </style></head><body>
 <main class="wrap">
-  <div class="top"><h1>Motorhome EUA 2027</h1><span class="small mut" id="clock"></span></div>
+  <div class="top"><h1>Motorhome EUA 2027</h1><span style="display:flex;gap:10px;align-items:center"><span class="small mut" id="clock"></span><a class="hdrbtn" href="#arquivo" aria-label="Arquivo: relatório, backup e ajustes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 17v3h16v-3"/></svg></a></span></div>
   <section id="view"></section>
 </main>
 <nav id="nav">
@@ -93,7 +100,7 @@ nav a{font-size:11px}
   <a href="#gastos" data-v="gastos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M7 15h4"/></svg>Gastos</a>
   <a href="#diario" data-v="diario"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Diário</a>
   <a href="#notas" data-v="notas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h9l4 4v14H6z"/><path d="M9 11h7M9 15h7M9 7h4"/></svg>Notas</a>
-  <a href="#arquivo" data-v="arquivo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 17v3h16v-3"/></svg>Arquivo</a>
+  <a href="#rv" data-v="rv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="15" height="11" rx="2"/><path d="M17 9h3l2 4v4h-5"/><circle cx="7" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></svg>Motorhome</a>
 </nav>
 <div class="sheet" id="sheet"><form id="form" novalidate></form></div>
 <div class="toast" id="toast"></div>
@@ -130,6 +137,57 @@ function legsHTML(d,hoje){const L=legsOf(d);if(!L.length)return '';const nx=L.fi
   const gpsBtns=l=>`<span class="sb"><a class="ib go" href="${esc(legURL(l.a.addr,l.b.addr))}" target="_blank" rel="noopener">Maps</a><a class="ib" style="background:#33ccff;color:#062a3a" href="${esc(wazeURL(l.b.addr))}" target="_blank" rel="noopener">Waze</a></span>`;
   return `${hoje&&nx>=0?`<div class="card" style="border-color:var(--blue)"><div class="small mut">Próximo trecho ${nx+1} de ${L.length}</div><b style="font-size:20px">${esc(L[nx].b.name)}</b><div class="small mut">saindo de ${esc(L[nx].a.name)}</div><div class="small" style="margin-top:2px">${esc(L[nx].b.addr)}</div><div class="row" style="margin-top:10px"><a class="btn blue" href="${esc(legURL(L[nx].a.addr,L[nx].b.addr))}" target="_blank" rel="noopener">GPS no Google Maps</a><a class="btn" style="background:#33ccff;color:#062a3a" href="${esc(wazeURL(L[nx].b.addr))}" target="_blank" rel="noopener">GPS no Waze</a></div></div>`:''}
   <div class="small" style="margin-top:10px;font-weight:600">Trechos para o GPS</div>${L.map((l,i)=>`<div class="leg2"><span>${legDone(l,d.date)?'<b style="color:var(--gtxt)">✓</b> ':''}<b>${i+1}.</b> ${esc(l.a.name)} → <b>${esc(l.b.name)}</b><br><span class="small mut">${esc(l.b.addr)}</span></span>${gpsBtns(l)}</div>`).join('')}`}
+const hhmm=m=>m==null||m===''||isNaN(m)?'':String(Math.floor(((m%1440)+1440)%1440/60)).padStart(2,'0')+':'+String(((m%60)+60)%60).padStart(2,'0');
+const durTxt=m=>!m?'':(m<60?m+' min':Math.floor(m/60)+'h'+(m%60?String(m%60).padStart(2,'0'):''));
+const toMin=s=>{s=String(s??'').trim();if(!s)return null;const m=s.match(/^(\d{1,2})(?::|h)(\d{2})?/);return m?(+m[1])*60+(+(m[2]||0)):null};
+const legMode=l=>{const m=norm(l.mode);return m.includes('uber')?'uber':(m==='ape'||m.startsWith('ape'))?'walk':(m.includes('onibus')||m.includes('bus'))?'transit':'drive'};
+const isRV=l=>legMode(l)==='drive'&&!/uber|taxi|transfer|carro/i.test(l.mode||'');
+const travelMode=l=>({walk:'walking',transit:'transit'}[legMode(l)]||'driving');
+const uberURL=b=>'https://m.uber.com/ul/?action=setPickup&pickup=my_location&dropoff%5Bformatted_address%5D='+encodeURIComponent(b);
+const safeLink=u=>/^https:\/\//.test(u||'')?u:'';
+const dayMin=(d,s)=>Math.round((new Date(s)-new Date(d.date+'T00:00'))/6e4);
+const isoAt=(d,m)=>iso(new Date(d.date+'T00:00').getTime()+m*6e4);
+function sched(d){const L=d.legs||[];const today=d.date===todayISO();const now=today?dayMin(d,iso(Date.now())):null;let prevP=null,prevE=null,found=false;
+  return L.map((l,i)=>{const st=l.actArr?'done':l.actDep?'going':(!found?(found=true,'next'):'todo');const pDep=l.dep??prevP??0;const pArr=pDep+(l.dur||0);
+    let eDep;if(l.actDep)eDep=dayMin(d,l.actDep);else if(prevE==null)eDep=pDep;else{const stay=Math.max(0,pDep-(prevP??pDep));eDep=l.fixed?Math.max(pDep,prevE):prevE+stay}
+    if(st==='next'&&now!=null&&now>eDep&&(l.fixed?true:true))eDep=Math.max(eDep,now);
+    let eArr=l.actArr?dayMin(d,l.actArr):eDep+(l.dur||0);if(st==='going'&&now!=null)eArr=Math.max(eArr,now);
+    prevP=pArr;prevE=eArr;return{l,i,pDep,pArr,eDep,eArr,st,late:eArr-pArr,dlate:eDep-pDep}})}
+const lateTag=m=>Math.abs(m)<5?'<span class="tagr ok">no horário</span>':m>0?`<span class="tagr late">atrasado ${esc(durTxt(m))}</span>`:`<span class="tagr ok">adiantado ${esc(durTxt(-m))}</span>`;
+function legGps(l,big){const a=l.fromAddr||l.from,b=l.toAddr||l.to;const g='https://www.google.com/maps/dir/?api=1&origin='+encodeURIComponent(a)+'&destination='+encodeURIComponent(b)+'&travelmode='+travelMode(l)+'&dir_action=navigate';const c=big?'btn':'btn';const o=[];
+  if(legMode(l)==='uber')o.push(`<a class="${c}" style="background:#000;color:#fff" href="${esc(uberURL(b))}" target="_blank" rel="noopener">Uber</a>`);
+  if(safeLink(l.link))o.push(`<a class="${c} pri" href="${esc(l.link)}" target="_blank" rel="noopener">Sua rota</a>`);
+  o.push(`<a class="${c}${safeLink(l.link)?'':' blue'}" href="${esc(g)}" target="_blank" rel="noopener">Maps</a>`);
+  if(isRV(l))o.push(`<a class="${c}" style="background:#33ccff;color:#062a3a" href="${esc(wazeURL(b))}" target="_blank" rel="noopener">Waze</a>`);return o.join('')}
+function legRow(d,s,full){const l=s.l;const info=[];info.push(isRV(l)?'RV':(l.mode||'RV'));if(l.dur)info.push(durTxt(l.dur));if(num(l.dist))info.push(f1(num(l.dist))+' mi');if(num(l.cost))info.push(money(num(l.cost)));
+  const plan=`${hhmm(s.pDep)} → ${hhmm(s.pArr)}`;const real=s.st==='done'?`real ${hhmm(s.eDep)} → ${hhmm(s.eArr)}`:(s.st==='going'?`saiu ${hhmm(s.eDep)} · chegada prevista ${hhmm(s.eArr)}`:(Math.abs(s.eDep-s.pDep)>=5?`previsto ${hhmm(s.eDep)} → ${hhmm(s.eArr)}`:''));
+  const act=s.st==='next'?`<button class="btn red" data-act="lgdep" data-id="${esc(d.id)}" data-i="${s.i}">Saí de ${esc(l.from||'origem')}</button>`:s.st==='going'?`<button class="btn pri" data-act="lgarr" data-id="${esc(d.id)}" data-i="${s.i}">Cheguei em ${esc(l.to||'destino')}</button>`:'';
+  return `<div class="lg ${s.st==='next'||s.st==='going'?'next':''} ${s.st==='done'?'done':''}"><div class="tt">${s.st==='done'?'<span style="color:var(--gtxt)">✓</span> ':''}${s.i+1}. ${esc(l.from)} → ${esc(l.to)} ${l.fixed?'<span class="tagr fix">horário fixo</span>':''}</div>
+   <div class="tm"><span class="${real&&s.st!=='todo'?'':''}">Plano ${esc(plan)}</span>${real?` · <b>${esc(real)}</b>`:''} ${s.st!=='todo'||Math.abs(s.late)>=5?lateTag(s.late):''}</div>
+   ${l.fixed&&s.st!=='done'&&s.late>=5?`<div class="small late">Nesse ritmo você chega ${esc(durTxt(s.late))} atrasado a este compromisso.</div>`:''}
+   <div class="small mut">${esc(info.join(' · '))}${full?' · '+esc(l.toAddr||''):''}</div>
+   <div class="acts2">${act}${legGps(l)}<button class="btn" data-act="leg" data-id="${esc(d.id)}" data-i="${s.i}">Editar</button></div></div>`}
+function dayTotals(d){const L=d.legs||[];const rv=L.filter(isRV);return{mi:rv.reduce((s,l)=>s+num(l.dist),0),rvMin:rv.reduce((s,l)=>s+(l.dur||0),0),cost:L.reduce((s,l)=>s+num(l.cost),0)}}
+function dayStatus(d){const S2=sched(d);const cur=S2.find(s=>s.st==='going')||S2.find(s=>s.st==='next');if(!cur)return S2.length?{done:true,late:S2[S2.length-1].late}:null;return{cur,late:cur.st==='next'?cur.dlate:cur.late}}
+/* odômetro e milhas */
+function odoReadings(){const R=[];(S.odo||[]).forEach(o=>R.push({ts:o.ts,odo:num(o.odo),src:'manual'}));S.visits.forEach(v=>{if(num(v.odo))R.push({ts:v.arr,odo:num(v.odo),src:'check-in'})});const rv=S.rv||{};if(rv.out&&num(rv.out.odo))R.push({ts:rv.out.when||'0',odo:num(rv.out.odo),src:'retirada'});if(rv.in&&num(rv.in.odo))R.push({ts:rv.in.when||'9',odo:num(rv.in.odo),src:'devolução'});return R.sort((a,b)=>String(a.ts).localeCompare(String(b.ts)))}
+function milesInfo(date){const R=odoReadings();const start=num(S.rv&&S.rv.out&&S.rv.out.odo)||(R[0]&&R[0].odo)||null;const last=R.length?R[R.length-1].odo:null;const incl=num(S.cfg.milesIncl)||2000;
+  const before=R.filter(r=>String(r.ts).slice(0,10)<date).pop();const upto=R.filter(r=>String(r.ts).slice(0,10)<=date).pop();const firstToday=R.find(r=>String(r.ts).slice(0,10)===date);
+  const base=before?before.odo:(firstToday?firstToday.odo:null);const today=upto&&base!=null&&String(upto.ts).slice(0,10)===date?upto.odo-base:null;
+  const plannedDay=(S.days.find(d=>d.date===date)||{legs:[]});const pd=dayTotals(plannedDay).mi;const pt=S.days.reduce((s,d)=>s+dayTotals(d).mi,0);
+  return{start,last,acc:start!=null&&last!=null?last-start:null,incl,today,pd,pt}}
+function milesCard(date){const m=milesInfo(date);const pct=m.acc!=null?m.acc/m.incl*100:null;
+  return `<div class="card"><div class="small mut">Milhas</div><div style="display:flex;gap:18px;flex-wrap:wrap;margin-top:4px"><div><div class="small mut">Hoje</div><b style="font-size:22px">${m.today!=null?esc(f1(m.today)):'—'}</b> <span class="small mut">${m.pd?'planejado '+esc(f1(m.pd)):''}</span></div><div><div class="small mut">Acumulado</div><b style="font-size:22px">${m.acc!=null?esc(f1(m.acc)):'—'}</b> <span class="small mut">de ${esc(f1(m.incl))} incluídas</span></div></div>
+  ${pct!=null?`<div class="meter"><i style="width:${Math.min(100,pct).toFixed(1)}%;${pct>90?'background:var(--red)':''}"></i></div><div class="small ${pct>90?'late':'mut'}" style="margin-top:4px">${m.acc>m.incl?'Excedeu '+esc(f1(m.acc-m.incl))+' mi':'Restam '+esc(f1(m.incl-m.acc))+' mi'}${m.last?' · odômetro '+esc(f1(m.last)):''}</div>`:`<p class="small mut" style="margin:6px 0 0">${m.start==null?'Registre o odômetro na retirada (aba Motorhome) para o app contar as milhas reais.':'Registre o odômetro durante o dia para ver as milhas de hoje.'}</p>`}
+  <button class="btn" style="margin-top:10px;width:100%" data-act="odo">Registrar odômetro</button></div>`}
+/* cotação do dia (USD→BRL, comercial) */
+const ymd=s=>s.replace(/-/g,'');
+async function fetchRate(date){S.rates=S.rates||{};if(S.rates[date])return S.rates[date];const t=todayISO();const q=!date||date>t?'latest':date;
+  try{const r=await fetch('https://api.frankfurter.app/'+q+'?from=USD&to=BRL');if(r.ok){const j=await r.json();const v=j&&j.rates&&j.rates.BRL;if(v){if(q!=='latest')S.rates[date]=v;return v}}}catch(e){}
+  try{const d0=new Date((q==='latest'?t:date)+'T12:00');const st=new Date(d0.getTime()-6*864e5).toISOString().slice(0,10);const r=await fetch('https://economia.awesomeapi.com.br/json/daily/USD-BRL/?start_date='+ymd(st)+'&end_date='+ymd(q==='latest'?t:date));if(r.ok){const j=await r.json();const v=j&&j[0]&&parseFloat(j[0].bid);if(v){if(q!=='latest')S.rates[date]=v;return v}}}catch(e){}
+  return null}
+let ratesBusy=false;
+async function fillRates(){if(ratesBusy||!navigator.onLine)return;ratesBusy=true;let ch=0;try{const pend=S.exp.filter(e=>!e.rate&&e.date);const dates=[...new Set(pend.map(e=>e.date))];for(const dt of dates){const v=await fetchRate(dt);if(v){S.exp.forEach(e=>{if(!e.rate&&e.date===dt){e.rate=v;ch++}})}}}finally{ratesBusy=false}if(ch)save()}
 const dayRoute=d=>{const w=stopsOf(d).filter(s=>s.addr).map(s=>s.addr).slice(0,9);return 'https://www.google.com/maps/dir/?api=1&origin='+encodeURIComponent(d.from)+'&destination='+encodeURIComponent(d.to)+(w.length?'&waypoints='+encodeURIComponent(w.join('|')):'')+'&travelmode=driving'};
 function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove('on'),2800)}
 
@@ -155,8 +213,9 @@ const vis=()=>[...S.visits].sort((a,b)=>(a.arr||'').localeCompare(b.arr||''));
 const openVisit=()=>vis().filter(v=>!v.dep).pop();
 const lastDep=()=>vis().filter(v=>v.dep).map(v=>v.dep).sort().pop();
 const rate=()=>num(S.cfg.rate)||1;
-const usd=e=>e.cur==='BRL'?num(e.amt)/rate():num(e.amt);
-const brl=e=>e.cur==='BRL'?num(e.amt):num(e.amt)*rate();
+const erate=e=>num(e.rate)||rate();
+const usd=e=>e.cur==='BRL'?num(e.amt)/erate(e):num(e.amt);
+const brl=e=>e.cur==='BRL'?num(e.amt):num(e.amt)*erate(e);
 function where(){const L=days(),t=todayISO();if(!L.length)return{L,t};const i=L.findIndex(d=>d.date===t);
   if(i>=0)return{L,t,cur:L[i],next:L[i+1],phase:'on'};
   if(t<L[0].date)return{L,t,cur:null,next:L[0],phase:'pre',left:Math.round((new Date(L[0].date+'T12:00')-new Date(t+'T12:00'))/864e5)};
@@ -186,35 +245,39 @@ function statusBox(){const ov=openVisit(),ld=lastDep(),now=Date.now();
   return `<button class="btn pri huge" style="width:100%;margin:12px 0" data-act="arr">Fazer check-in</button>`}
 function vHoje(){const w=where(),L=w.L;
   if(!L.length)return `<div class="card empty">Nenhum dia no roteiro.<br><br><a class="btn pri" href="#roteiro">Importar planilha ou adicionar dia</a></div>`;
-  if(w.phase==='post')return `<div class="card"><h2>Viagem encerrada</h2><p class="mut">Vá na aba Arquivo e baixe o relatório completo.</p></div>`+statusBox();
-  const d=w.cur||w.next,idx=L.indexOf(d)+1,moving=d.from&&d.to&&d.from!==d.to;
+  if(w.phase==='post')return `<div class="card"><h2>Viagem encerrada</h2><p class="mut">Toque no ícone de arquivo no topo e baixe o relatório completo.</p></div>`+statusBox();
+  const d=w.cur||w.next,idx=L.indexOf(d)+1,moving=d.from&&d.to&&d.from!==d.to;const hasL=(d.legs||[]).length>0;
   const head=w.phase==='pre'?`Faltam <b>${w.left}</b> ${w.left===1?'dia':'dias'} · começa ${esc(fd(d.date,{day:'2-digit',month:'long'}))}`:`Dia ${idx} de ${L.length} · ${esc(fd(d.date,{weekday:'long',day:'2-digit',month:'long'}))}`;
   const te=S.exp.filter(e=>e.date===w.t);const st=stopsOf(d);
   const bk=S.cfg.lastBackup?Math.floor((Date.now()-new Date(S.cfg.lastBackup))/864e5):null;
+  const sc=hasL?sched(d):[];const ds=hasL?dayStatus(d):null;const cur=ds&&ds.cur;
   return `<p class="mut" style="margin:0 0 10px">${head}</p>
   ${w.phase==='on'&&(bk===null||bk>=2)&&(S.visits.length||S.exp.length>3)?`<div class="warn">${bk===null?'Você ainda não fez backup.':'Último backup há '+bk+' dias.'} Os dados ficam só neste iPhone. <a href="#arquivo">Fazer backup</a></div>`:''}
-  <div class="signwrap"><div class="sign"><div><div class="k">${moving?'Próximo destino':'Hoje em'}</div><div class="dest">${esc(d.to||d.title||'—')}</div><div class="meta">${esc(d.drive||'')}${d.stay?`${d.drive?' · ':''}Pernoite: ${esc(d.stay)}`:''}</div></div>
+  <div class="signwrap"><div class="sign"><div><div class="k">${cur?'Próximo destino':(moving?'Próximo destino':'Hoje em')}</div><div class="dest">${esc(cur?cur.l.to:(d.toName||d.to||d.title||'—'))}</div><div class="meta">${cur?esc((cur.st==='going'?'chegada prevista ':'saída ')+hhmm(cur.st==='going'?cur.eArr:cur.eDep)):esc(d.drive||'')}${d.stay?` · Pernoite: ${esc(d.stay)}`:''}</div></div>
   <svg viewBox="0 0 80 80" aria-hidden="true"><path d="M18 62 L56 24" stroke="#fff" stroke-width="10"/><path d="M30 20 H60 V50" fill="none" stroke="#fff" stroke-width="10"/></svg></div><i class="post a"></i><i class="post b"></i></div>
   ${(()=>{const end=w.t+'T23:59';const due=(S.notes||[]).filter(n=>n.when&&!n.done&&n.when<=end).sort((a,b)=>a.when.localeCompare(b.when));return due.length?`<div class="card" style="border-color:var(--red)"><h3>Lembretes de hoje</h3>${due.map(noteItem).join('')}</div>`:''})()}
+  ${hasL&&cur?`<div class="card" style="border-color:var(--blue)"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap"><h3>Cronograma</h3>${w.phase==='on'&&d.date===w.t?lateTag(ds.late):''}</div>${legRow(d,cur,true)}</div>`:''}
   ${statusBox()}
-  <button class="btn red" style="width:100%" data-act="exp">+ Gasto</button>${(()=>{const L=legsOf(d),nx=L.findIndex(l=>!legDone(l,d.date));return nx>=0?legsHTML(d,true).split('<div class="small" style="margin-top:10px;font-weight:600">Trechos para o GPS</div>')[0]:''})()}
-  <div class="card"><h3>${esc(d.title||'Programação')}</h3>${moving?`<p class="mut small" style="margin:4px 0 0">${esc(d.from)} → ${esc(d.to)}</p>`:''}
+  <button class="btn red" style="width:100%" data-act="exp">+ Gasto</button>
+  ${milesCard(w.t)}
+  <div class="card"><h3>${esc(d.title||'Programação')}</h3>
+   ${hasL?sc.map(s=>legRow(d,s,false)).join('')+`<button class="btn" style="margin-top:10px" data-act="leg" data-id="${esc(d.id)}" data-i="-1">+ Trecho</button>`:`${moving?`<p class="mut small" style="margin:4px 0 0">${esc(d.from)} → ${esc(d.to)}</p>`:''}
    ${st.length?`<ul class="stops">${st.map(s=>{const v=visitOf(s.name,d.date);return `<li><span>${v?'<b style="color:var(--gtxt)">✓</b> ':''}${esc(s.name)}${v?` <span class="small mut">${esc(hm(v.arr))}${v.dep?' · '+esc(dur(ms(v.arr,v.dep))):' · agora'}</span>`:''}</span>${v?'':`<button class="ib go" data-act="arrq" data-place="${esc(s.name)}">Cheguei</button>`}</li>`}).join('')}</ul>`:''}
-   ${legsHTML(d,false)}${d.notes?`<p class="small mut" style="white-space:pre-line">${esc(d.notes)}</p>`:''}
-   <div class="row" style="margin-top:10px"><button class="btn" data-act="stop" data-id="${esc(d.id)}">+ Parada</button><button class="btn" data-act="day" data-id="${esc(d.id)}">Editar dia</button></div></div>
+   ${legsHTML(d,false)}<div class="row" style="margin-top:10px"><button class="btn" data-act="stop" data-id="${esc(d.id)}">+ Parada</button><button class="btn" data-act="leg" data-id="${esc(d.id)}" data-i="-1">+ Trecho</button></div>`}
+   ${d.notes?`<p class="small mut" style="white-space:pre-line">${esc(d.notes)}</p>`:''}
+   <div class="row" style="margin-top:10px"><button class="btn" data-act="day" data-id="${esc(d.id)}">Editar dia</button></div></div>
   ${w.next&&w.cur?`<p class="mut small">Amanhã: <b>${esc(w.next.title||w.next.to)}</b>${w.next.drive?' · '+esc(w.next.drive):''}</p>`:''}
   <div class="card"><div class="mut small">Gasto hoje</div><div class="big">${esc(money(te.reduce((s,e)=>s+usd(e),0)))}</div><div class="mut small">${te.length} lançamento(s) · viagem ${esc(money(S.exp.reduce((s,e)=>s+usd(e),0)))}</div></div>`}
 
-function vRoteiro(){const L=days(),t=todayISO();const seq=[];L.forEach(d=>{if(d.from&&!seq.length)seq.push(d.from);if(d.to&&seq[seq.length-1]!==d.to)seq.push(d.to)});
-  const full=seq.length>2?'https://www.google.com/maps/dir/?api=1&origin='+encodeURIComponent(seq[0])+'&destination='+encodeURIComponent(seq[seq.length-1])+'&waypoints='+encodeURIComponent(seq.slice(1,-1).slice(0,9).join('|'))+'&travelmode=driving':'';
-  return `<div class="row" style="margin-bottom:10px"><label class="btn blue">Importar planilha<input type="file" id="impx" accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv" hidden></label><button class="btn" data-act="xlx">Baixar em Excel</button></div>
-  <div class="row" style="margin-bottom:6px">${full?`<a class="btn blue" href="${esc(full)}" target="_blank" rel="noopener">Rota completa no Maps</a>`:''}<button class="btn pri" data-act="day">+ Dia</button></div>
-  <p class="small mut">Trechos = Saindo de → cada ponto com endereço, na ordem → Destino. Cada trecho tem botão para abrir no GPS (Google Maps ou Waze). Ponto sem endereço é só lembrete. Tempos de estrada são estimativas de carro.</p>
-  ${L.map((d,i)=>{const st=stopsOf(d);return `<article class="day ${d.date===t?'now':''}"><div class="d">${esc(fd(d.date,{day:'2-digit'}))}<small>${esc(fd(d.date,{month:'short'}))} · ${esc(fd(d.date,{weekday:'short'}))}</small></div>
-   <div><h3>${esc(d.title||'Dia '+(i+1))}</h3>${d.from&&d.to&&d.from!==d.to?`<div class="small mut">${esc(d.from)} → ${esc(d.to)}</div>`:''}${d.drive?`<span class="drive">${esc(d.drive)}</span>`:''}
-   ${st.length?`<ol class="stops">${st.map((s,j)=>{const v=visitOf(s.name,d.date);return `<li><span>${v?'<b style="color:var(--gtxt)">✓</b> ':''}${esc(s.name)}${s.addr?' <span class="tag">na rota</span>':''}${v&&v.dep?` <span class="small mut">${esc(dur(ms(v.arr,v.dep)))}</span>`:''}</span><span class="sb"><button class="ib" data-act="mv" data-id="${esc(d.id)}" data-i="${j}" data-dir="-1" aria-label="Subir" ${j?'':'disabled'}>↑</button><button class="ib" data-act="mv" data-id="${esc(d.id)}" data-i="${j}" data-dir="1" aria-label="Descer" ${j<st.length-1?'':'disabled'}>↓</button><button class="ib" data-act="rm" data-id="${esc(d.id)}" data-i="${j}" aria-label="Remover">✕</button></span></li>`}).join('')}</ol>`:''}
+function vRoteiro(){const L=days(),t=todayISO();const mi=L.reduce((s,d)=>s+dayTotals(d).mi,0),c=L.reduce((s,d)=>s+dayTotals(d).cost,0),incl=num(S.cfg.milesIncl)||2000;
+  return `${mi||c?`<div class="card"><div class="small mut">Planejado no roteiro</div><b style="font-size:20px">${esc(f1(mi))} mi de RV</b> <span class="small ${mi>incl*.85?'late':'mut'}">de ${esc(f1(incl))} incluídas${mi>incl*.85?' — margem apertada':''}</span>${c?`<div class="small">Uber/transporte previsto: <b>${esc(money(c))}</b></div>`:''}<div class="meter"><i style="width:${Math.min(100,mi/incl*100).toFixed(1)}%;${mi>incl*.85?'background:var(--red)':''}"></i></div></div>`:''}
+  <div class="row" style="margin-bottom:6px"><button class="btn pri" data-act="day">+ Dia</button></div>
+  ${L.map((d,i)=>{const st=stopsOf(d);const hasL=(d.legs||[]).length>0;const T=dayTotals(d);return `<article class="day ${d.date===t?'now':''}"><div class="d">${esc(fd(d.date,{day:'2-digit'}))}<small>${esc(fd(d.date,{month:'short'}))} · ${esc(fd(d.date,{weekday:'short'}))}</small></div>
+   <div><h3>${esc(d.title||'Dia '+(i+1))}</h3>${hasL?`<div class="small mut">${T.mi?'RV '+esc(f1(T.mi))+' mi · '+esc(durTxt(T.rvMin)):''}${T.mi&&T.cost?' · ':''}${T.cost?'transporte '+esc(money(T.cost)):''}</div>`:(d.from&&d.to&&d.from!==d.to?`<div class="small mut">${esc(d.from)} → ${esc(d.to)}</div>`:'')}${!hasL&&d.drive?`<span class="drive">${esc(d.drive)}</span>`:''}
+   ${hasL?sched(d).map(s=>legRow(d,s,false)).join(''):`${st.length?`<ol class="stops">${st.map((s,j)=>{const v=visitOf(s.name,d.date);return `<li><span>${v?'<b style="color:var(--gtxt)">✓</b> ':''}${esc(s.name)}${s.addr?' <span class="tag">na rota</span>':''}${v&&v.dep?` <span class="small mut">${esc(dur(ms(v.arr,v.dep)))}</span>`:''}</span><span class="sb"><button class="ib" data-act="mv" data-id="${esc(d.id)}" data-i="${j}" data-dir="-1" aria-label="Subir" ${j?'':'disabled'}>↑</button><button class="ib" data-act="mv" data-id="${esc(d.id)}" data-i="${j}" data-dir="1" aria-label="Descer" ${j<st.length-1?'':'disabled'}>↓</button><button class="ib" data-act="rm" data-id="${esc(d.id)}" data-i="${j}" aria-label="Remover">✕</button></span></li>`}).join('')}</ol>`:''}${legsHTML(d,false)}`}
    ${d.stay?`<div class="small" style="margin-top:6px"><b>Pernoite:</b> ${esc(d.stay)}</div>`:''}${d.notes?`<div class="small mut" style="white-space:pre-line;margin-top:4px">${esc(d.notes)}</div>`:''}
-   ${legsHTML(d,false)}<div class="acts"><button class="btn" data-act="stop" data-id="${esc(d.id)}">+ Parada</button><button class="btn" data-act="day" data-id="${esc(d.id)}">Editar</button></div></div></article>`}).join('')||'<div class="empty">Sem dias.</div>'}`}
+   <div class="acts"><button class="btn" data-act="leg" data-id="${esc(d.id)}" data-i="-1">+ Trecho</button>${hasL?'':`<button class="btn" data-act="stop" data-id="${esc(d.id)}">+ Parada</button>`}<button class="btn" data-act="day" data-id="${esc(d.id)}">Editar dia</button></div></div></article>`}).join('')||'<div class="empty">Sem dias.</div>'}
+  <div class="card"><h3>Planilha do roteiro</h3><p class="small mut">Importe a sua planilha de trechos (Data, Origem, endereço, Destino, endereço, Saída, Tempo, Chegada, Rota Maps, Custo, Distância). Só as datas que estão na planilha são atualizadas; as outras ficam como estão.</p><div class="row"><label class="btn blue">Importar planilha<input type="file" id="impx" accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv" hidden></label><button class="btn" data-act="xlx">Baixar em Excel</button></div></div>`}
 
 let fCat='all',fWhen='all';
 function totals(list){const tot=list.reduce((s,e)=>s+usd(e),0);const by=CATS.map(c=>[c[1],list.filter(e=>e.cat===c[0]).reduce((s,e)=>s+usd(e),0),c[2]]).filter(x=>x[1]>0).sort((a,b)=>b[1]-a[1]);
@@ -225,14 +288,14 @@ function vGastos(){const L=days(),first=L[0]?.date||'9999',t=todayISO();let list
   list.sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(b.ts||0)-(a.ts||0));const g={};list.forEach(e=>{(g[e.date||'']=g[e.date||'']||[]).push(e)});
   const T=totals(S.exp),bud=num(S.cfg.budget);
   return `<button class="btn red huge" style="width:100%" data-act="exp">+ Gasto</button>
-  <div class="row" style="margin-top:10px"><label class="btn">Importar planilha<input type="file" id="impe" accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv" hidden></label><button class="btn" data-act="xle">Baixar em Excel</button></div>
-  <div class="card"><div class="mut small">Total da viagem</div><div class="big">${esc(money(T.tot))}</div><div class="mut">${esc(money(T.tot*rate(),'BRL'))} a R$ ${esc(rate().toFixed(2).replace('.',','))}</div>
+  <div class="card"><div class="mut small">Total da viagem</div><div class="big">${esc(money(T.tot))}</div><div class="mut">${esc(money(S.exp.reduce((s,e)=>s+brl(e),0),'BRL'))} <span class="small">· cada gasto convertido pela cotação comercial do dia</span></div>
   ${bud?`<div class="meter"><i style="width:${Math.min(100,T.tot/bud*100).toFixed(1)}%;${T.tot>bud?'background:var(--red)':''}"></i></div><div class="small mut" style="margin-top:4px">${Math.round(T.tot/bud*100)}% do orçamento de ${esc(money(bud))}</div>`:''}
   ${T.by.length?`<h3 style="margin-top:14px">Por categoria</h3>${bars(T.by)}`:''}${T.bp.length?`<h3 style="margin-top:14px">Por forma de pagamento</h3>${bars(T.bp)}`:''}</div>
   ${fuelHTML()}
   <div class="chips" style="margin:6px 0 8px">${[['all','Tudo'],['hoje','Hoje'],['pre','Pré-viagem'],['trip','Na viagem']].map(([k,l])=>`<button class="chip ${fWhen===k?'on':''}" data-act="fw" data-k="${k}">${l}</button>`).join('')}</div>
   <select data-act="fc" aria-label="Categoria"><option value="all">Todas as categorias</option>${CATS.map(c=>`<option value="${c[0]}" ${fCat===c[0]?'selected':''}>${esc(c[1])}</option>`).join('')}</select>
-  ${list.length?Object.entries(g).map(([dt,es])=>`<div class="grp">${dt?esc(fd(dt,{weekday:'short',day:'2-digit',month:'short',year:'numeric'})):'Sem data'} · ${esc(money(es.reduce((s,e)=>s+usd(e),0)))}</div>`+es.map(e=>{const c=cat(e.cat);return `<div class="item" data-act="exp" data-id="${esc(e.id)}"><div class="ic" style="background:${c[2]}">${e.photo?`<img data-ph="${esc(e.photo)}" alt="" hidden>`:esc(c[1].slice(0,1))}</div><div><b>${esc(e.desc||c[1])}</b><div class="small mut">${esc(c[1])}${e.pay?' · '+esc(e.pay):''}</div></div><div class="v">${esc(money(num(e.amt),e.cur))}<small>${e.cur==='BRL'?esc(money(usd(e))):esc(money(brl(e),'BRL'))}</small></div></div>`}).join('')).join(''):'<div class="empty">Nenhum gasto neste filtro.</div>'}`}
+  ${list.length?Object.entries(g).map(([dt,es])=>`<div class="grp">${dt?esc(fd(dt,{weekday:'short',day:'2-digit',month:'short',year:'numeric'})):'Sem data'} · ${esc(money(es.reduce((s,e)=>s+usd(e),0)))}</div>`+es.map(e=>{const c=cat(e.cat);return `<div class="item" data-act="exp" data-id="${esc(e.id)}"><div class="ic" style="background:${c[2]}">${e.photo?`<img data-ph="${esc(e.photo)}" alt="" hidden>`:esc(c[1].slice(0,1))}</div><div><b>${esc(e.desc||c[1])}</b><div class="small mut">${esc(c[1])}${e.pay?' · '+esc(e.pay):''}</div></div><div class="v">${esc(money(num(e.amt),e.cur))}<small>${e.cur==='BRL'?esc(money(usd(e))):esc(money(brl(e),'BRL'))}${e.rate?' · '+esc(num(e.rate).toFixed(2).replace('.',',')):' · sem cotação'}</small></div></div>`}).join('')).join(''):'<div class="empty">Nenhum gasto neste filtro.</div>'}
+  <div class="card"><h3>Planilha de gastos</h3><div class="row"><label class="btn">Importar planilha<input type="file" id="impe" accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv" hidden></label><button class="btn" data-act="xle">Baixar em Excel</button></div></div>`}
 
 function dayLog(date){const V=vis().filter(v=>(v.arr||'').slice(0,10)===date);let at=0,road=0;V.forEach((v,i)=>{if(v.dep)at+=ms(v.arr,v.dep);const p=V[i-1];if(p&&p.dep)road+=Math.max(0,ms(p.dep,v.arr))});return{V,at,road}}
 function vDiario(){const dates=[...new Set(vis().map(v=>(v.arr||'').slice(0,10)))].sort().reverse();
@@ -253,6 +316,26 @@ function openNote(id){const n=(S.notes||[]).find(x=>x.id===id)||{};kind='note';e
   ${n.id&&n.when?`<button class="btn" type="button" data-act="ics" style="width:100%;margin-top:10px">Adicionar ao calendário do iPhone</button>`:''}${foot(!!n.id)}`);setTimeout(()=>{const t=$('#nt');if(t&&!n.id)t.focus()},60)}
 function icsFor(n){const p=s=>String(s).replace(/\\/g,'\\\\').replace(/;/g,'\;').replace(/,/g,'\\,').replace(/\n/g,'\\n');const dt=s=>s.replace(/[-:]/g,'')+'00';const end=iso(new Date(n.when).getTime()+15*6e4);const [t,...r]=String(n.text).split('\n');
   return ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//ViagemRV//PT','BEGIN:VEVENT','UID:'+n.id+'@viagem-rv','DTSTAMP:'+new Date().toISOString().replace(/[-:]/g,'').slice(0,15)+'Z','DTSTART:'+dt(n.when),'DTEND:'+dt(end),'SUMMARY:'+p(t),'DESCRIPTION:'+p(r.join('\n')),'BEGIN:VALARM','TRIGGER:-PT0M','ACTION:DISPLAY','DESCRIPTION:'+p(t),'END:VALARM','END:VEVENT','END:VCALENDAR'].join('\r\n')}
+const LEVELS=['Vazio','1/4','1/2','3/4','Cheio'];
+function rvBlock(k,t){const r=(S.rv||{})[k]||{};const has=r.when||r.odo||(r.photos||[]).length;
+  return `<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><h3>${t}</h3><button class="btn ${has?'':'pri'}" data-act="rvedit" data-k="${k}">${has?'Editar':'Registrar'}</button></div>
+  ${has?`<div class="kv" style="margin-top:10px"><span class="mut">Quando</span><b>${r.when?esc(fd(r.when,{day:'2-digit',month:'short'}))+' '+esc(hm(r.when)):'—'}</b><span class="mut">Odômetro</span><b>${num(r.odo)?esc(f1(num(r.odo)))+' mi':'—'}</b><span class="mut">Combustível</span><b>${esc(r.fuel||'—')}</b><span class="mut">Gás (propano)</span><b>${esc(r.propane||'—')}</b><span class="mut">Gerador</span><b>${num(r.gen)?esc(f1(num(r.gen)))+' h':'—'}</b></div>${r.notes?`<p class="small" style="white-space:pre-line">${esc(r.notes)}</p>`:''}<div class="thumbs">${(r.photos||[]).map(id=>`<img data-ph="${esc(id)}" alt="" hidden>`).join('')}</div>`:`<p class="small mut">Registre na hora, antes de sair do pátio: odômetro, combustível, gás, gerador e fotos de todos os lados, do painel e de qualquer avaria.</p>`}</div>`}
+function vRV(){const o=(S.rv||{}).out||{},n=(S.rv||{}).in||{};const incl=num(S.cfg.milesIncl)||2000;const m=milesInfo(todayISO());const used=num(n.odo)&&num(o.odo)?num(n.odo)-num(o.odo):m.acc;const extra=used!=null?Math.max(0,used-incl):0;const mc=num(S.cfg.mileCost);
+  return `<div class="card"><div class="small mut">${num(n.odo)?'Milhas rodadas na locação':'Milhas rodadas até agora'}</div><div class="big">${used!=null?esc(f1(used)):'—'}</div><div class="small ${extra?'late':'mut'}">${used!=null?(extra?'Excedeu '+esc(f1(extra))+' mi das '+esc(f1(incl))+' incluídas'+(mc?' · custo estimado '+esc(money(extra*mc)):''):'Restam '+esc(f1(incl-used))+' de '+esc(f1(incl))+' incluídas'):'Registre o odômetro na retirada.'}</div>${used!=null?`<div class="meter"><i style="width:${Math.min(100,used/incl*100).toFixed(1)}%;${used>incl*.9?'background:var(--red)':''}"></i></div>`:''}
+  <div class="two" style="margin-top:10px"><div><label class="f" for="mi">Milhas incluídas</label><input id="mi" inputmode="numeric" data-cfg="milesIncl" value="${esc(String(incl))}"></div><div><label class="f" for="mc">US$ por milha extra</label><input id="mc" inputmode="decimal" data-cfg="mileCost" value="${mc?esc(String(mc).replace('.',',')):''}" placeholder="pergunte à El Monte"></div></div></div>
+  ${rvBlock('out','Retirada')}${rvBlock('in','Devolução')}
+  <p class="small mut">As fotos ficam guardadas no app com data e hora, entram no backup e no relatório final. Fotografe também o painel mostrando odômetro e combustível.</p>`}
+function openRV(k){S.rv=S.rv||{};const r=S.rv[k]||{};kind='rv';editId=k;pendingMany=[];rvDel=[];
+  const sel=(n,v)=>`<select name="${n}"><option value="">—</option>${LEVELS.map(x=>`<option ${v===x?'selected':''}>${x}</option>`).join('')}</select>`;
+  open(`<h2>${k==='out'?'Retirada do motorhome':'Devolução do motorhome'}</h2>
+  <label class="f" for="rw">Data e hora</label><input id="rw" name="when" type="datetime-local" value="${esc(r.when||iso(Date.now()))}">
+  <label class="f" for="ro">Odômetro (milhas)</label><input id="ro" name="odo" inputmode="numeric" value="${num(r.odo)?esc(r.odo):''}">
+  <div class="two"><div><label class="f">Combustível</label>${sel('fuel',r.fuel)}</div><div><label class="f">Gás (propano)</label>${sel('propane',r.propane)}</div></div>
+  <label class="f" for="rg">Horímetro do gerador (horas, se houver)</label><input id="rg" name="gen" inputmode="decimal" value="${num(r.gen)?esc(String(r.gen).replace('.',',')):''}">
+  <label class="f" for="rn">Avarias e observações</label><textarea id="rn" name="notes" placeholder="Ex.: risco na porta traseira esquerda; para-brisa trincado no canto">${esc(r.notes||'')}</textarea>
+  <label class="f" for="phm">Fotos (pode escolher várias)</label><input id="phm" type="file" accept="image/*" multiple>
+  <div class="thumbs" id="rvth">${(r.photos||[]).map(id=>`<div class="th"><img data-ph="${esc(id)}" alt="" hidden><button type="button" data-act="rvdelph" data-id="${esc(id)}" aria-label="Remover foto">✕</button></div>`).join('')}</div>${foot(false)}`);hydratePhotos()}
+let pendingMany=[],rvDel=[];
 function vArquivo(){const sa=window.matchMedia('(display-mode: standalone)').matches||navigator.standalone;const bk=S.cfg.lastBackup;
   return `${sa?'':`<div class="card"><h3>Instalar no iPhone</h3><p class="small">No Safari, toque em Compartilhar (quadrado com seta) e depois em <b>Adicionar à Tela de Início</b>. Depois use sempre pelo ícone verde: os dados ficam guardados no app instalado, não no Safari.</p></div>`}
   <div class="card"><h3>Relatório da viagem</h3><p class="small mut">Arquivo único (abre no navegador do PC e imprime em PDF) com resumo, dia a dia, tempos, gastos e fotos dos cupons.</p><button class="btn pri" style="width:100%" data-act="report">Baixar relatório</button>
@@ -261,12 +344,12 @@ function vArquivo(){const sa=window.matchMedia('(display-mode: standalone)').mat
   <button class="btn blue" style="width:100%" data-act="backup">Fazer backup agora</button><label class="btn" style="width:100%;margin-top:10px">Restaurar backup<input type="file" id="restore" accept=".json,application/json" hidden></label></div>
   <div class="card"><h3>Leitura de cupom com IA</h3><p class="small mut">${aiKey?'Chave cadastrada (termina em …'+esc(aiKey.slice(-4))+'). ':''}Usa a sua chave da API da Claude (console.anthropic.com). A chave fica só neste iPhone: não vai para o GitHub nem para o backup. Cada cupom custa uma fração de centavo de dólar.</p>
   <input id="aik" type="password" autocomplete="off" placeholder="sk-ant-…" value=""><div class="row" style="margin-top:10px"><button class="btn pri" data-act="aikey">Salvar chave</button>${aiKey?'<button class="btn" data-act="aikey" onclick="document.getElementById(\'aik\').value=\'\'">Remover chave</button>':''}</div></div>
-  <div class="card"><h3>Câmbio e orçamento</h3><div class="two"><div><label class="f" for="rt">R$ por US$</label><input id="rt" inputmode="decimal" value="${esc(String(S.cfg.rate).replace('.',','))}" data-cfg="rate"></div><div><label class="f" for="bd">Orçamento (US$)</label><input id="bd" inputmode="decimal" value="${S.cfg.budget?esc(String(S.cfg.budget).replace('.',',')):''}" placeholder="opcional" data-cfg="budget"></div></div><p class="small mut">Use a taxa efetiva que você paga (com IOF no cartão brasileiro).</p></div>
+  <div class="card"><h3>Câmbio e orçamento</h3><p class="small mut">Cada gasto usa a cotação comercial do dólar no dia do gasto, buscada na internet. O valor abaixo só é usado enquanto o gasto ainda não tem cotação.</p><div class="two"><div><label class="f" for="rt">R$ por US$ (reserva)</label><input id="rt" inputmode="decimal" value="${esc(String(S.cfg.rate).replace('.',','))}" data-cfg="rate"></div><div><label class="f" for="bd">Orçamento (US$)</label><input id="bd" inputmode="decimal" value="${S.cfg.budget?esc(String(S.cfg.budget).replace('.',',')):''}" placeholder="opcional" data-cfg="budget"></div></div></div>
   <p class="small mut" id="stor"></p>`}
 
-function render(){const v=(location.hash||'#hoje').slice(1);const V={hoje:vHoje,roteiro:vRoteiro,gastos:vGastos,diario:vDiario,notas:vNotas,arquivo:vArquivo}[v]||vHoje;
+function render(){const v=(location.hash||'#hoje').slice(1);const V={hoje:vHoje,roteiro:vRoteiro,gastos:vGastos,diario:vDiario,notas:vNotas,rv:vRV,arquivo:vArquivo}[v]||vHoje;
   const keep=document.activeElement&&document.activeElement.dataset&&document.activeElement.dataset.cfg;if(keep)return;
-  $('#view').innerHTML=V();document.querySelectorAll('#nav a').forEach(a=>a.classList.toggle('on',a.dataset.v===(V===vHoje?'hoje':v)));
+  $('#view').innerHTML=V();document.querySelectorAll('#nav a').forEach(a=>a.classList.toggle('on',a.dataset.v===(V===vHoje?'hoje':v)));document.querySelector('.hdrbtn').style.outline=V===vArquivo?'2px solid var(--green)':'';
   $('#clock').textContent=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});hydratePhotos();
   if(V===vArquivo&&navigator.storage&&navigator.storage.estimate)navigator.storage.estimate().then(e=>{const el=$('#stor');if(el)el.textContent='Espaço usado: '+(e.usage/1048576).toFixed(1)+' MB'}).catch(()=>{})}
 
@@ -283,6 +366,7 @@ function openExp(id,vid){const vv=vid?S.visits.find(x=>x.id===vid):null;const e=
   <label class="f">Categoria</label><div class="chips">${CATS.map(c=>`<label class="chip"><input type="radio" name="cat" value="${c[0]}" ${(e.cat||'rest')===c[0]?'checked':''}>${esc(c[1])}</label>`).join('')}</div>
   <label class="f" for="desc">Descrição</label><input id="desc" name="desc" value="${esc(e.desc||'')}" placeholder="Ex.: Diesel Love's, jantar">
   <label class="f" for="gal">Galões (se for combustível)</label><input id="gal" name="gal" inputmode="decimal" value="${num(e.gal)?esc(String(e.gal).replace('.',',')):''}" placeholder="Ex.: 32,5">
+  <p class="small mut" style="margin:8px 0 0">${e.rate?'Cotação comercial do dia: R$ '+esc(num(e.rate).toFixed(4).replace('.',',')):'A cotação do dia é buscada ao salvar (precisa de internet).'}</p>
   ${ev?`<p class="small mut" style="margin:8px 0 0">Ligado ao check-in: <b>${esc(ev.place)}</b> · ${esc(fd(ev.arr,{day:'2-digit',month:'short'}))} ${esc(hm(ev.arr))}</p>`:''}
   <div class="two"><div><label class="f" for="date">Data</label><input id="date" name="date" type="date" value="${esc(d)}"></div><div><label class="f" for="pay">Pagamento</label><select id="pay" name="pay">${PAYS.map(p=>`<option ${e.pay===p?'selected':''}>${esc(p)}</option>`).join('')}</select></div></div>
   ${photoField(e.photo)}${aiKey?`<button class="btn blue" type="button" data-act="ai" style="width:100%;margin-top:10px">Ler cupom com IA</button>`:`<p class="small mut">Para a IA ler o cupom, cadastre a chave na aba Arquivo.</p>`}${foot(!!e.id)}`);hydratePhotos();setTimeout(()=>{if(!e.id&&form.elements['amt'])form.elements['amt'].focus()},60)}
@@ -312,6 +396,23 @@ function openDay(id){const d=S.days.find(x=>x.id===id)||{};kind='day';editId=d.i
   <label class="f" for="dto">Destino final do dia (endereço)</label><input id="dto" name="to" value="${esc(d.to||'')}" placeholder="Ex.: Kia Center, Orlando, FL">
   <label class="f" for="dn">Observações</label><textarea id="dn" name="notes">${esc(d.notes||'')}</textarea>${foot(!!d.id)}`)}
 const ptRow=s=>`<div class="pt"><input name="pn" placeholder="Nome (ex.: Casa da Dani)" value="${esc(s.name)}"><button type="button" class="ib" data-act="delpt" aria-label="Remover ponto">✕</button><input name="pa" placeholder="Endereço para o GPS (opcional)" value="${esc(s.addr)}"></div>`;
+const MODES=['RV','Uber','A pé','Ônibus','Carro alugado','Outro'];let legIdx=-1;
+function openLeg(id,i){const d=S.days.find(x=>x.id===id);if(!d)return;kind='leg';editId=id;legIdx=+i;const L=d.legs||[];const prev=L[L.length-1]||{};const l=legIdx>=0?L[legIdx]:{from:prev.to||'',fromAddr:prev.toAddr||'',mode:'RV'};
+  const mo=MODES.includes(l.mode)?l.mode:(l.mode?'Outro':'RV');const tAct=s=>s?hm(s):'';
+  open(`<h2>${legIdx>=0?'Editar trecho':'Novo trecho'}</h2><p class="mut small" style="margin:4px 0 0">${esc(fd(d.date,{weekday:'long',day:'2-digit',month:'long'}))}</p>
+  <div class="two"><div><label class="f" for="lf">De</label><input id="lf" name="from" value="${esc(l.from||'')}"></div><div><label class="f" for="lt">Para</label><input id="lt" name="to" value="${esc(l.to||'')}"></div></div>
+  <label class="f" for="lfa">Endereço de saída</label><input id="lfa" name="fromAddr" value="${esc(l.fromAddr||'')}">
+  <label class="f" for="lta">Endereço de chegada</label><input id="lta" name="toAddr" value="${esc(l.toAddr||'')}">
+  <div class="two"><div><label class="f" for="ld">Saída planejada</label><input id="ld" name="dep" type="time" value="${esc(hhmm(l.dep))}"></div><div><label class="f" for="lu">Tempo (h:mm)</label><input id="lu" name="dur" value="${esc(l.dur?Math.floor(l.dur/60)+':'+String(l.dur%60).padStart(2,'0'):'')}" placeholder="1:30"></div></div>
+  <label class="chip" style="margin-top:12px"><input type="checkbox" name="fixed" ${l.fixed?'checked':''}>Horário fixo (compromisso: não sai antes do planejado e o app avisa se for atrasar)</label>
+  <div class="two"><div><label class="f" for="lad">Saída real</label><input id="lad" name="actDep" type="time" value="${esc(tAct(l.actDep))}"></div><div><label class="f" for="laa">Chegada real</label><input id="laa" name="actArr" type="time" value="${esc(tAct(l.actArr))}"></div></div>
+  <div class="two"><div><label class="f" for="lm">Como</label><select id="lm" name="mode">${MODES.map(m=>`<option ${m===mo?'selected':''}>${m}</option>`).join('')}</select></div><div><label class="f" for="lmo">Detalhe (se Outro)</label><input id="lmo" name="modeTxt" value="${esc(mo==='Outro'?l.mode:'')}"></div></div>
+  <div class="two"><div><label class="f" for="lc">Custo previsto (US$)</label><input id="lc" name="cost" inputmode="decimal" value="${num(l.cost)?esc(String(l.cost).replace('.',',')):''}"></div><div><label class="f" for="ldi">Distância (mi)</label><input id="ldi" name="dist" inputmode="decimal" value="${num(l.dist)?esc(String(l.dist).replace('.',',')):''}"></div></div>
+  <label class="f" for="ll">Link da sua rota no Google Maps</label><input id="ll" name="link" value="${esc(l.link||'')}" placeholder="https://maps.app.goo.gl/...">${foot(legIdx>=0)}`)}
+function openOdo(){kind='odo';editId='';open(`<h2>Registrar odômetro</h2><label class="f" for="oo">Odômetro agora (milhas)</label><input id="oo" name="odo" inputmode="numeric" placeholder="Ex.: 12450"><label class="f" for="ot">Quando</label><input id="ot" name="ts" type="datetime-local" value="${esc(iso(Date.now()))}">${foot(false)}`);setTimeout(()=>{const x=$('#oo');if(x)x.focus()},60)}
+async function legAct(id,i,what){const d=S.days.find(x=>x.id===id);if(!d||!d.legs||!d.legs[i])return;const l=d.legs[i];const now=iso(Date.now());
+  if(what==='dep'){l.actDep=now;const ov=openVisit();if(ov){ov.dep=now;ov.depAuto=false}await save();const s=sched(d)[i];toast('Saída de '+(l.from||'origem')+' às '+hm(now)+(Math.abs(s.dlate)>=5?(s.dlate>0?' · atrasado ':' · adiantado ')+durTxt(Math.abs(s.dlate)):' · no horário'));const g=await gps();if(g){l.depGps=g;await save()}}
+  else{l.actArr=now;const v=await arrive(l.to||l.toAddr);if(v){l.visit=v.id;await save()}}}
 function openStop(id){const d=S.days.find(x=>x.id===id);if(!d)return;kind='stop';editId=id;const st=stopsOf(d);
   open(`<h2>Nova parada</h2><p class="mut small" style="margin:4px 0 0">${esc(fd(d.date,{weekday:'long',day:'2-digit',month:'long'}))} · ${esc(d.title||'')}</p>
   <label class="f" for="sn">Nome</label><input id="sn" name="name" placeholder="Ex.: Buc-ee's, mirante">
@@ -320,14 +421,21 @@ function openStop(id){const d=S.days.find(x=>x.id===id);if(!d)return;kind='stop'
 const saveDay=(d,L)=>{d.stops=L.join('\n');return save()};
 
 form.addEventListener('change',ev=>{if(ev.target.name==='type'){const w=$('#odoW');if(w)w.hidden=ev.target.value!=='comb'}});
+form.addEventListener('change',async ev=>{if(ev.target.id!=='phm')return;const th=$('#rvth');for(const f of ev.target.files){const b=await shrink(f,1600,.8);pendingMany.push(b);th.insertAdjacentHTML('beforeend',`<div class="th"><img src="${URL.createObjectURL(b)}" alt=""></div>`)}});
 form.addEventListener('change',async ev=>{if(ev.target.id!=='ph')return;const f=ev.target.files[0];if(!f)return;pending=await shrink(f,1600,.8);if(pendingUrl)URL.revokeObjectURL(pendingUrl);pendingUrl=URL.createObjectURL(pending);const p=$('#pv');p.src=pendingUrl;p.hidden=false;if(kind==='exp'&&aiKey&&!num(form.elements['amt']&&form.elements['amt'].value)){readReceipt(form.querySelector('[data-act=ai]'))}});
 async function storePhoto(){if(!pending)return curPhoto;const id='p'+uid();await idb.set('photos',id,pending);return id}
 form.addEventListener('submit',async ev=>{ev.preventDefault();const o=Object.fromEntries(new FormData(form).entries());const msg=t=>{$('#fmsg').textContent=t};
   try{
-    if(kind==='exp'){const a=num(o.amt);if(!a)return msg('Informe o valor.');const ph=await storePhoto();const e={id:editId||uid(),amt:a,cur:o.cur,cat:o.cat||'out',desc:(o.desc||'').trim(),date:o.date,pay:o.pay,photo:ph||'',gal:num(o.gal)||0,visit:expVisit||'',ts:Date.now()};const i=S.exp.findIndex(x=>x.id===e.id);if(i>=0)S.exp[i]=e;else S.exp.push(e);await save();toast('Gasto salvo')}
+    if(kind==='exp'){const a=num(o.amt);if(!a)return msg('Informe o valor.');const ph=await storePhoto();const e={id:editId||uid(),amt:a,cur:o.cur,cat:o.cat||'out',desc:(o.desc||'').trim(),date:o.date,pay:o.pay,photo:ph||'',gal:num(o.gal)||0,visit:expVisit||'',ts:Date.now()};{const old=S.exp.find(x=>x.id===e.id);e.rate=old&&old.date===e.date&&old.rate?old.rate:null;if(!e.rate){try{e.rate=await fetchRate(e.date)}catch(x){}}}const i=S.exp.findIndex(x=>x.id===e.id);if(i>=0)S.exp[i]=e;else S.exp.push(e);await save();toast('Gasto salvo')}
     if(kind==='arr'){const ty=o.type||'';const pl=(o.place||'').trim()||typeName(ty);if(!pl)return msg('Escolha o tipo de parada ou escreva o nome.');const now=iso(Date.now());const ov=openVisit();if(ov){ov.dep=now;ov.depAuto=true}const ph=await storePhoto();S.visits.push({id:uid(),place:pl,type:ty,odo:num(o.odo)||null,arr:now,dep:'',note:(o.note||'').trim(),photo:ph||'',arrGps:gpsFix||null});await save();toast('Check-in: '+pl+' às '+hm(now)+(gpsFix?'':' (sem GPS)'))}
     if(kind==='vis'){const v=S.visits.find(x=>x.id===editId);if(!v)return;if(o.dep&&o.dep<o.arr)return msg('A saída não pode ser antes da chegada.');v.place=(o.place||'').trim()||v.place;v.arr=o.arr||v.arr;v.dep=o.dep||'';v.note=(o.note||'').trim();v.type=o.type||'';v.odo=num(o.odo)||null;v.photo=await storePhoto()||'';await save();toast('Atualizado')}
     if(kind==='day'){if(!o.date)return msg('Informe a data.');const F=new FormData(form),pn=F.getAll('pn'),pa=F.getAll('pa');const stops=pn.map((n,i)=>{const nm=String(n).trim().replace(/\|/g,'/'),ad=String(pa[i]||'').trim().replace(/\|/g,'/');return nm||ad?(nm||ad)+(ad?' || '+ad:''):''}).filter(Boolean).join('\n');const d={id:editId||('d'+o.date.replace(/-/g,'')+uid().slice(-3)),date:o.date,title:o.title.trim(),from:o.from.trim(),to:o.to.trim(),drive:o.drive.trim(),stay:o.stay.trim(),stops,notes:o.notes};const i=S.days.findIndex(x=>x.id===d.id);if(i>=0)S.days[i]=d;else S.days.push(d);await save();toast('Dia salvo')}
+    if(kind==='leg'){const d=S.days.find(x=>x.id===editId);if(!d)return;if(!(o.to||o.toAddr).trim())return msg('Informe o destino.');const mode=o.mode==='Outro'?(o.modeTxt||'Outro').trim():o.mode;const old=legIdx>=0?d.legs[legIdx]:{};
+      const at=t=>{const m=toMin(t);return m==null?'':isoAt(d,m)};const l={...old,from:o.from.trim(),fromAddr:o.fromAddr.trim(),to:o.to.trim(),toAddr:o.toAddr.trim(),dep:toMin(o.dep),dur:toMin(o.dur),mode,link:safeLink((o.link||'').trim()),cost:num(o.cost)||0,dist:num(o.dist)||0,fixed:!!o.fixed,actDep:at(o.actDep),actArr:at(o.actArr)};
+      d.legs=d.legs||[];if(legIdx>=0)d.legs[legIdx]=l;else{d.legs.push(l);d.legs.sort((a,b)=>(a.dep??9999)-(b.dep??9999))}await save();toast('Trecho salvo');close();return}
+    if(kind==='odo'){const v=num(o.odo);if(!v)return msg('Informe o odômetro.');S.odo=S.odo||[];S.odo.push({id:uid(),ts:o.ts||iso(Date.now()),odo:v});await save();toast('Odômetro registrado');close();return}
+    if(kind==='rv'){S.rv=S.rv||{};const r=S.rv[editId]||{};const ids=(r.photos||[]).filter(x=>!rvDel.includes(x));for(const b of pendingMany){const id='p'+uid();await idb.set('photos',id,b);ids.push(id)}rvDel.forEach(x=>idb.del('photos',x).catch(()=>{}));
+      S.rv[editId]={when:o.when||'',odo:num(o.odo)||null,fuel:o.fuel||'',propane:o.propane||'',gen:num(o.gen)||null,notes:(o.notes||'').trim(),photos:ids};pendingMany=[];rvDel=[];await save();toast('Salvo');close();return}
     if(kind==='note'){const tx=(o.text||'').trim();if(!tx)return msg('Escreva alguma coisa.');S.notes=S.notes||[];const old=S.notes.find(x=>x.id===editId);const n={id:editId||uid(),text:tx,when:o.when||'',done:old?old.done:false,ts:Date.now()};const i=S.notes.findIndex(x=>x.id===n.id);if(i>=0)S.notes[i]=n;else S.notes.push(n);await save();toast(n.when?'Lembrete salvo':'Anotação salva');close();return}
     if(kind==='impx'){if(!importExp||!importExp.length)return close();const n=importExp.length;S.exp.push(...importExp);importExp=null;await save();toast(n+' gasto(s) importado(s)');close();return}
     if(kind==='imp'){if(!importDays)return;S.days=importDays;importDays=null;await save();toast('Roteiro atualizado');close();location.hash='#roteiro';return}
@@ -365,27 +473,47 @@ const COLS={date:['data','dia','date'],title:['titulo','title','programacao','de
 function mapHead(row){const idx={};row.forEach((c,i)=>{const n=norm(c);for(const[k,al]of Object.entries(COLS))if(idx[k]===undefined&&(al.includes(n)||(k==='addr'&&n.startsWith('endereco'))))idx[k]=i});return idx}
 function findHead(rows){for(let i=0;i<Math.min(rows.length,10);i++){const ix=mapHead(rows[i]);if(ix.date!==undefined)return{i,ix}}return null}
 function parseStopsCell(v){return String(v??'').split(/\r?\n|;/).map(x=>x.trim()).filter(Boolean).map(x=>{const p=x.split(/\s*\|\|?\s*/);return (p[0]||'').trim()+(p[1]&&p[1].trim()?' || '+p[1].trim():'')})}
+const LCOLS={date:['data','dia'],from:['origem','de'],fromAddr:['enderecoorigem','origemendereco','enderecodeorigem','enderecodesaida'],to:['destino','para'],toAddr:['enderecodestino','destinoendereco','enderecodedestino','enderecodechegada'],dep:['saida','partida','horasaida','horadesaida'],dur:['tempo','duracao'],arr:['chegada','horachegada'],link:['rotamaps','rota','maps','link','transporte','modo','como'],cost:['custo','custoprevisto','preco'],dist:['distancia','distanciami','milhas','mi'],fixed:['fixo','horariofixo','compromisso']};
+const frac=v=>{if(typeof v==='number'){const f=v-Math.floor(v);return Math.round(f*1440)%1440}return toMin(v)};
+function legsSheet(rows){for(let i=0;i<Math.min(rows.length,10);i++){const ix={};rows[i].forEach((c,k)=>{const n=norm(c);for(const[key,al]of Object.entries(LCOLS))if(ix[key]===undefined&&al.includes(n))ix[key]=k});
+  if(ix.date!==undefined&&ix.from!==undefined&&ix.to!==undefined&&(ix.dep!==undefined||ix.dur!==undefined)){
+    if(ix.fromAddr===undefined&&!norm(rows[i][ix.from+1])&&ix.from+1!==ix.to)ix.fromAddr=ix.from+1;
+    if(ix.toAddr===undefined&&!norm(rows[i][ix.to+1]))ix.toAddr=ix.to+1;return{i,ix}}}return null}
+function readLegs(rows,hd){const ix=hd.ix,by={};const g=(r,k)=>ix[k]===undefined?'':String(r[ix[k]]??'').trim();
+  for(const r of rows.slice(hd.i+1)){const date=xlDate(r[ix.date]);if(!date)continue;const lk=g(r,'link');const link=/^https?:\/\//i.test(lk)?lk.replace(/^http:/i,'https:'):'';
+    const l={from:g(r,'from'),fromAddr:g(r,'fromAddr'),to:g(r,'to'),toAddr:g(r,'toAddr'),dep:ix.dep===undefined?null:frac(r[ix.dep]),dur:ix.dur===undefined?null:frac(r[ix.dur]),mode:link?'RV':(lk||'RV'),link,cost:xlNum(g(r,'cost'))||0,dist:xlNum(g(r,'dist'))||0,fixed:/^(s|sim|x|yes|true|1)/i.test(g(r,'fixed'))};
+    if(!l.to&&!l.toAddr)continue;if(l.dur==null&&ix.arr!==undefined&&l.dep!=null){const a=frac(r[ix.arr]);if(a!=null)l.dur=(a-l.dep+1440)%1440}
+    (by[date]=by[date]||[]).push(l)}return by}
+function dayFromLegs(date,legs,base){const old=(base&&base.legs)?[...base.legs]:[];legs.forEach(l=>{const k=old.findIndex(o=>o&&o.from===l.from&&o.to===l.to);if(k>=0){const o=old[k];old[k]=null;['actDep','actArr','visit','depGps'].forEach(f=>{if(o[f])l[f]=o[f]});if(o.fixed&&!l.fixed)l.fixed=true}});
+  const d={id:(base&&base.id)||('d'+date.replace(/-/g,'')),date,legs,notes:(base&&base.notes)||''};const rv=legs.filter(isRV);const last=rv[rv.length-1]||legs[legs.length-1];
+  const names=[];legs.forEach(l=>{[l.from,l.to].forEach(n=>{if(n&&names[names.length-1]!==n)names.push(n)})});
+  d.title=names.slice(0,6).join(' → ');d.from=legs[0].fromAddr||legs[0].from;d.to=last.toAddr||last.to;d.toName=last.to||'';d.stay=last.to||last.toAddr;d.stops='';const T=dayTotals(d);d.drive=T.mi?'RV '+durTxt(T.rvMin)+' · '+Math.round(T.mi)+' mi':'';return d}
 async function parseRoteiro(file){const X=await loadXL();const wb=X.read(await file.arrayBuffer(),{type:'array'});
   const sheets=wb.SheetNames.map(n=>({n,rows:X.utils.sheet_to_json(wb.Sheets[n],{header:1,raw:true,defval:''})}));
-  let dias=null,par=null;for(const sh of sheets){const h=findHead(sh.rows);if(!h)continue;const isStops=h.ix.name!==undefined&&h.ix.title===undefined&&h.ix.to===undefined;if(isStops&&!par)par={...h,rows:sh.rows};else if(!isStops&&!dias)dias={...h,rows:sh.rows}}
-  if(!dias)throw new Error('Não achei a coluna "Data". Use o modelo baixado pelo app.');
-  const g=(r,k,ix)=>ix[k]===undefined?'':String(r[ix[k]]??'').trim();
-  const out=[];for(const r of dias.rows.slice(dias.i+1)){const date=xlDate(r[dias.ix.date]);if(!date)continue;out.push({id:'d'+date.replace(/-/g,''),date,title:g(r,'title',dias.ix),from:g(r,'from',dias.ix),to:g(r,'to',dias.ix),drive:g(r,'drive',dias.ix),stay:g(r,'stay',dias.ix),stops:parseStopsCell(dias.ix.stops===undefined?'':r[dias.ix.stops]).join('\n'),notes:g(r,'notes',dias.ix)})}
-  if(par){const by={};par.rows.slice(par.i+1).forEach((r,k)=>{const date=xlDate(r[par.ix.date]);const nm=g(r,'name',par.ix).replace(/\|/g,'/');if(!date||!nm)return;(by[date]=by[date]||[]).push({o:num(par.ix.order===undefined?k:r[par.ix.order])||k,line:nm+(g(r,'addr',par.ix)?' || '+g(r,'addr',par.ix).replace(/\|/g,'/'):'')})});
-    out.forEach(d=>{if(by[d.date])d.stops=by[d.date].sort((a,b)=>a.o-b.o).map(x=>x.line).join('\n')})}
-  const seen={};const days=out.filter(d=>seen[d.date]?false:(seen[d.date]=1));days.sort((a,b)=>a.date.localeCompare(b.date));if(!days.length)throw new Error('Nenhuma linha com data válida.');return days}
+  let legBy=null,dias=null,par=null;for(const sh of sheets){const lh=legsSheet(sh.rows);if(lh){if(!legBy)legBy=readLegs(sh.rows,lh);continue}const hh=findHead(sh.rows);if(!hh)continue;const isStops=hh.ix.name!==undefined&&hh.ix.title===undefined&&hh.ix.to===undefined;if(isStops&&!par)par={...hh,rows:sh.rows};else if(!isStops&&!dias)dias={...hh,rows:sh.rows}}
+  const g=(r,k,ix)=>ix[k]===undefined?'':String(r[ix[k]]??'').trim();const diasBy={},stopsBy={};
+  if(dias)for(const r of dias.rows.slice(dias.i+1)){const date=xlDate(r[dias.ix.date]);if(!date||diasBy[date])continue;diasBy[date]={title:g(r,'title',dias.ix),from:g(r,'from',dias.ix),to:g(r,'to',dias.ix),drive:g(r,'drive',dias.ix),stay:g(r,'stay',dias.ix),stops:parseStopsCell(dias.ix.stops===undefined?'':r[dias.ix.stops]).join('\n'),notes:g(r,'notes',dias.ix)}}
+  if(par){const by={};par.rows.slice(par.i+1).forEach((r,k)=>{const date=xlDate(r[par.ix.date]);const nm=g(r,'name',par.ix).replace(/\|/g,'/');if(!date||!nm)return;(by[date]=by[date]||[]).push({o:num(par.ix.order===undefined?k:r[par.ix.order])||k,line:nm+(g(r,'addr',par.ix)?' || '+g(r,'addr',par.ix).replace(/\|/g,'/'):'')})});Object.entries(by).forEach(([dt,a])=>stopsBy[dt]=a.sort((x,y)=>x.o-y.o).map(x=>x.line).join('\n'))}
+  const dates=[...new Set([...Object.keys(legBy||{}),...Object.keys(diasBy)])].sort();if(!dates.length)throw new Error('Não achei trechos nem dias com data válida na planilha.');
+  const cur=new Map(S.days.map(d=>[d.date,d]));const out=[],upd=[],nov=[];
+  for(const dt of dates){const base=cur.get(dt);let d;if(legBy&&legBy[dt])d=dayFromLegs(dt,legBy[dt],base);else d={id:(base&&base.id)||('d'+dt.replace(/-/g,'')),date:dt,stops:'',notes:(base&&base.notes)||''};
+    const dr=diasBy[dt];if(dr){if(dr.title)d.title=dr.title;if(dr.stay)d.stay=dr.stay;if(dr.notes)d.notes=dr.notes;if(!d.legs){d.from=dr.from;d.to=dr.to;d.drive=dr.drive;d.stops=dr.stops}}
+    if(!d.legs&&stopsBy[dt])d.stops=stopsBy[dt];out.push(d);(base?upd:nov).push(dt)}
+  const kept=S.days.filter(d=>!dates.includes(d.date));return{days:[...kept,...out].sort((a,b)=>a.date.localeCompare(b.date)),upd,nov,kept:kept.map(d=>d.date)}}
 let importDays=null;
-async function onImportFile(file){try{toast('Lendo planilha…');importDays=await parseRoteiro(file);const ns=importDays.reduce((s,d)=>s+lines(d.stops).length,0);kind='imp';editId='';
-  open(`<h2>Importar roteiro</h2><p>${importDays.length} dias e ${ns} paradas, de ${esc(fd(importDays[0].date,{day:'2-digit',month:'short'}))} a ${esc(fd(importDays[importDays.length-1].date,{day:'2-digit',month:'short',year:'numeric'}))}.</p>
-  <ol class="stops">${importDays.map(d=>`<li><span><b>${esc(fd(d.date,{day:'2-digit',month:'short'}))}</b> ${esc(d.title||d.to||'')}${lines(d.stops).length?` <span class="small mut">${lines(d.stops).length} parada(s)</span>`:''}</span></li>`).join('')}</ol>
-  <p class="small mut">O roteiro atual será substituído por este. Gastos, chegadas e fotos não mudam.</p><div class="row" style="margin-top:16px"><button class="btn pri" type="submit">Substituir roteiro</button><button class="btn" type="button" data-act="close">Cancelar</button></div><p class="small mut" id="fmsg"></p>`)}
+async function onImportFile(file){try{toast('Lendo planilha…');const res=await parseRoteiro(file);importDays=res.days;kind='imp';editId='';
+  const nl=res.days.reduce((s,d)=>s+(d.legs||[]).length,0);const mi=res.days.reduce((s,d)=>s+dayTotals(d).mi,0);const fmt=dt=>fd(dt,{day:'2-digit',month:'short'});
+  open(`<h2>Importar roteiro</h2><p>${res.upd.length+res.nov.length} dia(s)${nl?' · '+nl+' trecho(s)':''}${mi?' · '+Math.round(mi)+' mi de RV':''}.</p><p class="small">${res.upd.length?'Atualiza: '+esc(res.upd.map(fmt).join(', '))+'. ':''}${res.nov.length?'Novos: '+esc(res.nov.map(fmt).join(', '))+'. ':''}${res.kept.length?'Ficam como estão: '+esc(res.kept.map(fmt).join(', '))+'.':''}</p>
+  <ol class="stops">${res.days.filter(d=>!res.kept.includes(d.date)).map(d=>`<li><span><b>${esc(fmt(d.date))}</b> ${esc(d.title||d.to||'')} <span class="small mut">${(d.legs||[]).length?(d.legs.length+' trecho(s)'):lines(d.stops).length+' ponto(s)'}</span></span></li>`).join('')}</ol>
+  <p class="small mut">Gastos, check-ins, fotos e notas não mudam. Saídas e chegadas já registradas nos trechos são mantidas.</p><div class="row" style="margin-top:16px"><button class="btn pri" type="submit">Importar</button><button class="btn" type="button" data-act="close">Cancelar</button></div><p class="small mut" id="fmsg"></p>`)}
   catch(e){toast(e.message||'Não consegui ler a planilha')}}
-async function exportRoteiro(){const X=await loadXL();const L=days();
-  const d1=[['Data','Título','Saindo de','Destino','Estrada','Pernoite','Observações']].concat(L.map(d=>[d.date.split('-').reverse().join('/'),d.title,d.from,d.to,d.drive,d.stay,d.notes]));
-  const d2=[['Data','Ordem','Parada','Endereço']];L.forEach(d=>stopsOf(d).forEach((s,i)=>d2.push([d.date.split('-').reverse().join('/'),i+1,s.name,s.addr])));
-  const wb=X.utils.book_new();const s1=X.utils.aoa_to_sheet(d1),s2=X.utils.aoa_to_sheet(d2);s1['!cols']=[{wch:11},{wch:34},{wch:30},{wch:30},{wch:24},{wch:34},{wch:40}];s2['!cols']=[{wch:11},{wch:7},{wch:40},{wch:50}];
-  const s3=X.utils.aoa_to_sheet([['Como usar'],['Aba Dias: uma linha por dia. Data no formato dd/mm/aaaa.'],['Aba Paradas: uma linha por parada, na ordem do dia. Com endereço, a parada vira um trecho de rota no Maps.'],['Para atualizar: edite, salve e no app vá em Roteiro → Importar planilha. O roteiro inteiro é substituído; gastos e chegadas ficam.']]);s3['!cols']=[{wch:110}];
-  X.utils.book_append_sheet(wb,s1,'Dias');X.utils.book_append_sheet(wb,s2,'Paradas');X.utils.book_append_sheet(wb,s3,'Como usar');
+async function exportRoteiro(){const X=await loadXL();const L=days();const dd=s=>s.split('-').reverse().join('/');
+  const d0=[['Data','Origem','Endereço origem','Destino','Endereço destino','Saída','Tempo','Chegada','Rota Maps','Custo','Distância','Fixo']];L.forEach(d=>(d.legs||[]).forEach(l=>d0.push([dd(d.date),l.from,l.fromAddr,l.to,l.toAddr,hhmm(l.dep),l.dur?Math.floor(l.dur/60)+':'+String(l.dur%60).padStart(2,'0'):'',l.dep!=null&&l.dur?hhmm(l.dep+l.dur):'',l.link||l.mode||'',num(l.cost)||'',num(l.dist)||'',l.fixed?'Sim':''])));
+  const d1=[['Data','Título','Saindo de','Destino','Estrada','Pernoite','Observações']].concat(L.map(d=>[dd(d.date),d.title,(d.legs||[]).length?'':d.from,(d.legs||[]).length?'':d.to,d.drive,d.stay,d.notes]));
+  const d2=[['Data','Ordem','Parada','Endereço']];L.filter(d=>!(d.legs||[]).length).forEach(d=>stopsOf(d).forEach((s,i)=>d2.push([dd(d.date),i+1,s.name,s.addr])));
+  const wb=X.utils.book_new();const s0=X.utils.aoa_to_sheet(d0),s1=X.utils.aoa_to_sheet(d1),s2=X.utils.aoa_to_sheet(d2);s0['!cols']=[{wch:11},{wch:22},{wch:45},{wch:22},{wch:45},{wch:7},{wch:7},{wch:8},{wch:40},{wch:8},{wch:9},{wch:6}];s1['!cols']=[{wch:11},{wch:40},{wch:30},{wch:30},{wch:20},{wch:30},{wch:50}];s2['!cols']=[{wch:11},{wch:7},{wch:40},{wch:50}];
+  const s3=X.utils.aoa_to_sheet([['Como usar'],['Aba Trechos: uma linha por deslocamento. Saída hh:mm, Tempo h:mm, Rota Maps = link da sua rota ou Uber / A pé / Ônibus, Custo em US$, Distância em milhas, Fixo = Sim para compromisso com hora marcada.'],['Aba Dias: título, pernoite e observações de cada dia. Aba Paradas: só para dias sem trechos.'],['No app: Roteiro → Importar planilha. Só as datas que estão na planilha são atualizadas.']]);s3['!cols']=[{wch:120}];
+  X.utils.book_append_sheet(wb,s0,'Trechos');X.utils.book_append_sheet(wb,s1,'Dias');X.utils.book_append_sheet(wb,s2,'Paradas');X.utils.book_append_sheet(wb,s3,'Como usar');
   const buf=X.write(wb,{bookType:'xlsx',type:'array'});await deliver(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),'roteiro-viagem-'+stamp()+'.xlsx')}
 
 /* ================= gastos em Excel ================= */
@@ -426,12 +554,13 @@ function csvExp(){return csv([['Data','Categoria','Descrição','Valor','Moeda',
 function csvVis(){const V=vis();return csv([['Lugar','Tipo','Odômetro','Chegada','Saída','Tempo no lugar (min)','Estrada antes (min)','Latitude','Longitude','Anotação']].concat(V.map((v,i)=>{const p=V[i-1];return [v.place,typeName(v.type),v.odo||'',v.arr.replace('T',' '),(v.dep||'').replace('T',' '),v.dep?Math.round(ms(v.arr,v.dep)/6e4):'',p&&p.dep&&p.dep.slice(0,10)===v.arr.slice(0,10)?Math.round(ms(p.dep,v.arr)/6e4):'',v.arrGps?.lat??'',v.arrGps?.lng??'',v.note]})))}
 async function photoData(id,max){if(!id)return '';try{const b=await idb.get('photos',id);if(!b)return '';return await toData(max?await shrink(b,max,.7):b)}catch(e){return ''}}
 async function buildReport(){const L=days(),T=totals(S.exp),V=vis();let at=0,road=0;V.forEach((v,i)=>{if(v.dep)at+=ms(v.arr,v.dep);const p=V[i-1];if(p&&p.dep&&p.dep.slice(0,10)===v.arr.slice(0,10))road+=ms(p.dep,v.arr)});
-  const ph={};for(const id of [...S.exp.map(e=>e.photo),...S.visits.map(v=>v.photo)].filter(Boolean))ph[id]=await photoData(id,1000);
+  const ph={};for(const id of [...S.exp.map(e=>e.photo),...S.visits.map(v=>v.photo),...(((S.rv||{}).out||{}).photos||[]),...(((S.rv||{}).in||{}).photos||[])].filter(Boolean))ph[id]=await photoData(id,1000);
   const img=id=>ph[id]?`<img src="${ph[id]}" alt="">`:'';
   const tb=rows=>{const m=rows.length?rows[0][1]:1;return `<table>${rows.map(([l,v,c])=>`<tr><td>${esc(l)}</td><td style="width:45%"><div class="b"><i style="width:${(v/m*100).toFixed(1)}%;background:${c}"></i></div></td><td class="n">${esc(money(v))}</td><td class="n">${esc(money(v*rate(),'BRL'))}</td></tr>`).join('')}</table>`};
   const first=L[0]?.date||'9999';const pre=S.exp.filter(e=>(e.date||'')<first);
   const dayBlocks=L.map((d,i)=>{const dv=V.filter(v=>v.arr.slice(0,10)===d.date);const de=S.exp.filter(e=>e.date===d.date);const sum=de.reduce((s,e)=>s+usd(e),0);
     return `<section class="day"><h2>Dia ${i+1} · ${esc(fd(d.date,{weekday:'long',day:'2-digit',month:'long'}))}</h2><p class="m"><b>${esc(d.title||'')}</b>${d.from&&d.to&&d.from!==d.to?' · '+esc(d.from)+' → '+esc(d.to):''}${d.stay?' · pernoite: '+esc(d.stay):''}</p>
+    ${(d.legs||[]).length?`<h3>Trechos (plano × real)</h3><table>${sched(d).map(s=>`<tr><td class="n">${esc(hhmm(s.pDep))}–${esc(hhmm(s.pArr))}</td><td>${esc(s.l.from)} → <b>${esc(s.l.to)}</b> <span class="m">${esc(isRV(s.l)?'RV':s.l.mode||'')}</span></td><td class="n">${s.l.actDep?'real '+esc(hhmm(s.eDep))+'–'+(s.l.actArr?esc(hhmm(s.eArr)):'?'):''}</td><td class="n">${s.l.actArr?(Math.abs(s.late)<5?'no horário':(s.late>0?'+':'−')+esc(durTxt(Math.abs(s.late)))):''}</td></tr>`).join('')}</table>`:''}
     ${dv.length?`<h3>Onde estivemos</h3><table>${dv.map((v,j)=>{const p=dv[j-1];return (p&&p.dep?`<tr class="leg"><td></td><td colspan="3">estrada ${esc(dur(ms(p.dep,v.arr)))}</td></tr>`:'')+`<tr><td class="n">${esc(hm(v.arr))}–${esc(hm(v.dep))}</td><td><b>${esc(v.place)}</b>${v.note?'<br><span class="m">'+esc(v.note)+'</span>':''}</td><td class="n">${v.dep?esc(dur(ms(v.arr,v.dep))):''}</td><td>${v.arrGps?`<a href="${esc(mapll(v.arrGps.lat,v.arrGps.lng))}">mapa</a>`:''}</td></tr>${v.photo&&ph[v.photo]?`<tr><td></td><td colspan="3">${img(v.photo)}</td></tr>`:''}`}).join('')}</table>`:`<p class="m">Planejado: ${esc(stopsOf(d).map(s=>s.name).join(' · ')||'—')}</p>`}
     ${de.length?`<h3>Gastos do dia · ${esc(money(sum))}</h3><table>${de.map(e=>`<tr><td>${esc(cat(e.cat)[1])}</td><td>${esc(e.desc)}<br><span class="m">${esc(e.pay||'')}</span></td><td class="n">${esc(money(num(e.amt),e.cur))}</td><td class="n">${esc(e.cur==='BRL'?money(usd(e)):money(brl(e),'BRL'))}</td></tr>${e.photo&&ph[e.photo]?`<tr><td></td><td colspan="3">${img(e.photo)}</td></tr>`:''}`).join('')}</table>`:''}</section>`}).join('');
   const html=`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Relatório — Motorhome EUA 2027</title><style>
@@ -444,6 +573,7 @@ table{width:100%;border-collapse:collapse;margin:6px 0}td{padding:6px 8px;border
 @media print{body{padding:0}.day{break-inside:auto}}</style></head><body>
 <div class="hero"><h1>Motorhome EUA 2027</h1><p>${esc(fd(L[0]?.date,{day:'2-digit',month:'long'}))} a ${esc(fd(L[L.length-1]?.date,{day:'2-digit',month:'long',year:'numeric'}))} · gerado em ${esc(new Date().toLocaleString('pt-BR'))}</p></div>
 <div class="k"><div>Total gasto<b>${esc(money(T.tot))}</b>${esc(money(T.tot*rate(),'BRL'))}</div><div>Lugares visitados<b>${V.length}</b>${esc(dur(at))} nos lugares</div><div>Na estrada<b>${esc(dur(road))}</b>entre paradas do mesmo dia</div><div>Câmbio usado<b>R$ ${esc(rate().toFixed(2).replace('.',','))}</b>por US$</div></div>
+${(()=>{const o=(S.rv||{}).out||{},n=(S.rv||{}).in||{};const m=milesInfo(todayISO());const used=num(n.odo)&&num(o.odo)?num(n.odo)-num(o.odo):m.acc;if(!num(o.odo)&&!(o.photos||[]).length)return '';const blk=(t,r)=>`<h3>${t}</h3><p class="m">${r.when?esc(fd(r.when,{day:'2-digit',month:'short'}))+' '+esc(hm(r.when)):''} · odômetro ${num(r.odo)?esc(f1(num(r.odo))):'—'} · combustível ${esc(r.fuel||'—')} · gás ${esc(r.propane||'—')}${num(r.gen)?' · gerador '+esc(f1(num(r.gen)))+' h':''}</p>${r.notes?`<p style="white-space:pre-line">${esc(r.notes)}</p>`:''}${(r.photos||[]).map(id=>ph[id]?`<img src="${ph[id]}" alt="">`:'').join('')}`;return `<section class="day"><h2>Motorhome</h2><p><b>${used!=null?esc(f1(used))+' milhas rodadas':''}</b>${used!=null?' de '+esc(f1(num(S.cfg.milesIncl)||2000))+' incluídas':''}</p>${blk('Retirada',o)}${n.odo||n.when?blk('Devolução',n):''}</section>`})()}
 <h2>Gastos por categoria</h2>${tb(T.by)}
 ${(()=>{const FR=fuelRows();if(!FR.length)return '';const FT=fuelTotals(FR);return `<h2 style="margin-top:20px">Abastecimentos</h2><p class="m">${FR.length} parada(s) · ${esc(money(FT.val))}${FT.gal?' · '+f1(FT.gal)+' galões':''}${FT.miAll?' · '+f1(FT.miAll)+' mi rodadas':''}${FT.mpg?' · média '+f1(FT.mpg)+' mpg':''}</p><table><tr><td><b>Quando</b></td><td><b>Onde</b></td><td class="n"><b>Odômetro</b></td><td class="n"><b>Mi desde anterior</b></td><td class="n"><b>Galões</b></td><td class="n"><b>US$</b></td><td class="n"><b>mpg</b></td></tr>${FR.map(r=>`<tr><td class="n">${esc(fd(r.v.arr,{day:'2-digit',month:'short'}))} ${esc(hm(r.v.arr))}</td><td>${esc(r.v.place)}${r.v.arrGps?` <a href="${esc(mapll(r.v.arrGps.lat,r.v.arrGps.lng))}">mapa</a>`:''}</td><td class="n">${r.odo?f1(r.odo):''}</td><td class="n">${r.mi?f1(r.mi):''}</td><td class="n">${r.gal?f1(r.gal):''}</td><td class="n">${r.val?esc(money(r.val)):''}</td><td class="n">${r.mpg?f1(r.mpg):''}</td></tr>`).join('')}</table>`})()}<h2 style="margin-top:20px">Por forma de pagamento</h2>${tb(T.bp)}
 ${pre.length?`<section class="day"><h2>Antes da viagem</h2><table>${pre.map(e=>`<tr><td>${esc(e.date)}</td><td>${esc(e.desc)}</td><td class="n">${esc(money(num(e.amt),e.cur))}</td><td class="n">${esc(e.cur==='BRL'?money(usd(e)):money(brl(e),'BRL'))}</td></tr>`).join('')}</table></section>`:''}
@@ -453,7 +583,7 @@ ${(S.notes||[]).length?`<section class="day"><h2>Anotações e lembretes</h2><ta
 async function backup(){const photos={};for(const k of await idb.keys('photos'))photos[k]=await photoData(k,0);S.cfg.lastBackup=iso(Date.now());
   const blob=new Blob([JSON.stringify({app:'viagem-rv',v:1,saved:S.cfg.lastBackup,state:S,photos})],{type:'application/json'});const ok=await deliver(blob,'backup-viagem-'+S.cfg.lastBackup.replace(/[:T]/g,'-')+'.json');if(ok)await save();else S.cfg.lastBackup=''}
 async function restore(file){try{const j=JSON.parse(await file.text());if(j.app!=='viagem-rv'||!j.state)throw new Error('arquivo não é um backup deste app');
-  await idb.clear('photos');for(const[k,u]of Object.entries(j.photos||{})){const b=await (await fetch(u)).blob();await idb.set('photos',k,b)}S=j.state;S.notes=S.notes||[];S.visits=S.visits||[];await save();toast('Backup restaurado')}catch(e){toast('Não foi possível restaurar: '+(e.message||e))}}
+  await idb.clear('photos');for(const[k,u]of Object.entries(j.photos||{})){const b=await (await fetch(u)).blob();await idb.set('photos',k,b)}S=j.state;S.notes=S.notes||[];S.visits=S.visits||[];S.odo=S.odo||[];S.rv=S.rv||{};await save();toast('Backup restaurado')}catch(e){toast('Não foi possível restaurar: '+(e.message||e))}}
 
 /* ================= eventos ================= */
 let delArm=0;const stamp=()=>new Date().toISOString().slice(0,10);
@@ -463,6 +593,11 @@ document.addEventListener('click',async ev=>{const el=ev.target.closest('[data-a
   else if(a==='arrq'){el.disabled=true;await arrive(el.dataset.place)}
   else if(a==='dep'){el.disabled=true;await depart()}
   else if(a==='vis')openVis(el.dataset.id);
+  else if(a==='leg'){ev.preventDefault();openLeg(el.dataset.id,el.dataset.i)}
+  else if(a==='lgdep'||a==='lgarr'){el.disabled=true;await legAct(el.dataset.id,+el.dataset.i,a==='lgdep'?'dep':'arr')}
+  else if(a==='odo')openOdo();
+  else if(a==='rvedit')openRV(el.dataset.k);
+  else if(a==='rvdelph'){rvDel.push(el.dataset.id);el.closest('.th').remove()}
   else if(a==='expv'){ev.stopPropagation();openExp('',el.dataset.id)}
   else if(a==='day')openDay(el.dataset.id);
   else if(a==='stop')openStop(el.dataset.id);
@@ -476,6 +611,7 @@ document.addEventListener('click',async ev=>{const el=ev.target.closest('[data-a
   else if(a==='delpt'){const r=el.closest('.pt');if($('#pts').children.length>1)r.remove();else r.querySelectorAll('input').forEach(i=>i.value='')}
   else if(a==='pick')form.elements['place'].value=el.dataset.v;
   else if(a==='del'){if(Date.now()-delArm>4000){delArm=Date.now();el.textContent='Toque de novo para excluir';return}
+    if(kind==='leg'){const d=S.days.find(x=>x.id===editId);if(d&&d.legs){d.legs.splice(legIdx,1);await save();toast('Trecho excluído');close()}return}
     if(kind==='note')S.notes=(S.notes||[]).filter(x=>x.id!==editId);if(kind==='exp')S.exp=S.exp.filter(x=>x.id!==editId);if(kind==='vis')S.visits=S.visits.filter(x=>x.id!==editId);if(kind==='day')S.days=S.days.filter(x=>x.id!==editId);if(curPhoto&&kind!=='day')idb.del('photos',curPhoto).catch(()=>{});await save();toast('Excluído');close()}
   else if(a==='mv'||a==='rm'){const d=S.days.find(x=>x.id===el.dataset.id);if(!d)return;const L=lines(d.stops),i=+el.dataset.i;
     if(a==='rm'&&!el.classList.contains('arm')){el.classList.add('arm');el.textContent='Remover?';setTimeout(()=>{if(el.isConnected){el.classList.remove('arm');el.textContent='✕'}},3500);return}
@@ -500,8 +636,8 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden&&!sheet.cl
 
 /* ================= início ================= */
 (async()=>{try{const st=await idb.get('kv','state');if(st)S=st;else if(self.SEED){S=JSON.parse(JSON.stringify(self.SEED));await idb.set('kv','state',S)}}catch(e){toast('Este navegador não permite guardar dados')}
-  S.visits=S.visits||[];S.notes=S.notes||[];S.cfg=S.cfg||{rate:5.87};try{aiKey=(await idb.get('kv','apikey'))||''}catch(e){}render();
+  S.visits=S.visits||[];S.notes=S.notes||[];S.odo=S.odo||[];S.rv=S.rv||{};S.rates=S.rates||{};S.cfg=S.cfg||{rate:5.87};try{aiKey=(await idb.get('kv','apikey'))||''}catch(e){}render();
   try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}
-  if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{})})();
+  if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});fillRates();addEventListener('online',fillRates)})();
 }
 </script></body></html>
