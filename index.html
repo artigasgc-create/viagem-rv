@@ -62,7 +62,7 @@ a{color:var(--blue)}
 .vis .h{font-weight:800;font-size:18px;line-height:1.15}.vis .h small{display:block;font-size:13px;font-weight:400;color:var(--mut)}
 .vis img{max-width:150px;border-radius:10px;margin-top:6px;display:block}
 .leg{margin:2px 0 2px 82px;font-size:14px;color:var(--mut);border-left:3px dotted var(--blue);padding:4px 10px}
-nav{position:fixed;left:0;right:0;bottom:0;z-index:5;background:var(--card);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(5,1fr);padding-bottom:env(safe-area-inset-bottom)}
+nav{position:fixed;left:0;right:0;bottom:0;z-index:5;background:var(--card);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(6,1fr);padding-bottom:env(safe-area-inset-bottom)}
 nav a{display:flex;flex-direction:column;align-items:center;gap:2px;padding:9px 2px 10px;color:var(--mut);text-decoration:none;font-size:12px;font-weight:600;min-height:60px}
 nav a.on{color:var(--green)}nav svg{width:24px;height:24px}
 .sheet{position:fixed;inset:0;z-index:10;background:rgba(0,0,0,.45);display:none;align-items:flex-end;justify-content:center}.sheet.open{display:flex}
@@ -75,6 +75,10 @@ textarea{min-height:84px}
 .gps{font-size:14px;font-weight:600;margin-top:8px}
 .toast{position:fixed;left:50%;bottom:calc(100px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:15px;z-index:20;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw;text-align:center}.toast.on{opacity:1}
 .empty{padding:28px 0;color:var(--mut);text-align:center}
+.pt{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;padding:8px 0;border-top:1px dashed var(--line)}.pt input{min-height:42px}.pt .ib{grid-row:span 2;align-self:center}
+.leg2{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;padding:8px 0;border-top:1px dashed var(--line)}.leg2 .sb a{display:grid;place-items:center;text-decoration:none}
+.note{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;padding:12px 0;border-top:1px solid var(--line)}.note .ck{width:30px;height:30px;border-radius:8px;border:2px solid var(--green);background:transparent;cursor:pointer;color:#fff;font-weight:800}.note .ck.on{background:var(--green)}.note .tx{cursor:pointer;white-space:pre-line}.note.done .tx{color:var(--mut);text-decoration:line-through}.late{color:var(--red);font-weight:600}
+nav a{font-size:11px}
 .warn{background:light-dark(#fff4e0,#33260f);border-radius:12px;padding:10px 14px;font-size:14px;margin:10px 0}
 @media(max-width:520px){.bar{grid-template-columns:minmax(0,7em) minmax(0,1fr) auto}.day{grid-template-columns:50px minmax(0,1fr)}.day .d{font-size:26px}.leg{margin-left:20px}}
 @media(prefers-reduced-motion:reduce){.toast{transition:none}}
@@ -88,6 +92,7 @@ textarea{min-height:84px}
   <a href="#roteiro" data-v="roteiro"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="18" r="2"/><circle cx="18" cy="6" r="2"/><path d="M8 18h7a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h7"/></svg>Roteiro</a>
   <a href="#gastos" data-v="gastos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M7 15h4"/></svg>Gastos</a>
   <a href="#diario" data-v="diario"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Diário</a>
+  <a href="#notas" data-v="notas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h9l4 4v14H6z"/><path d="M9 11h7M9 15h7M9 7h4"/></svg>Notas</a>
   <a href="#arquivo" data-v="arquivo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 17v3h16v-3"/></svg>Arquivo</a>
 </nav>
 <div class="sheet" id="sheet"><form id="form" novalidate></form></div>
@@ -117,12 +122,14 @@ const mapq=q=>'https://www.google.com/maps/search/?api=1&query='+encodeURICompon
 const mapll=(la,lo)=>'https://www.google.com/maps/search/?api=1&query='+la+','+lo;
 const routeOK=d=>!!(d.from&&d.to&&(d.from!==d.to||stopsOf(d).some(s=>s.addr)));
 const legsOf=d=>{const P=[];const add=(n,a)=>{if(!a||(P.length&&P[P.length-1].addr===a))return;P.push({name:n,addr:a})};add(d.from,d.from);stopsOf(d).filter(s=>s.addr).forEach(s=>add(s.name,s.addr));add(d.to,d.to);const L=[];for(let i=1;i<P.length;i++)L.push({a:P[i-1],b:P[i]});return L};
-const legURL=(a,b)=>'https://www.google.com/maps/dir/?api=1&origin='+encodeURIComponent(a)+'&destination='+encodeURIComponent(b)+'&travelmode=driving';
+const legURL=(a,b)=>'https://www.google.com/maps/dir/?api=1&origin='+encodeURIComponent(a)+'&destination='+encodeURIComponent(b)+'&travelmode=driving&dir_action=navigate';
+const wazeURL=b=>'https://waze.com/ul?q='+encodeURIComponent(b)+'&navigate=yes';
 const navURL=b=>'https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(b)+'&travelmode=driving';
 const legDone=(l,date)=>!!S.visits.find(v=>(v.arr||'').slice(0,10)===date&&(v.place===l.b.name||v.place===l.b.addr));
 function legsHTML(d,hoje){const L=legsOf(d);if(!L.length)return '';const nx=L.findIndex(l=>!legDone(l,d.date));
-  return `${hoje&&nx>=0?`<div class="card" style="border-color:var(--blue)"><div class="small mut">Próximo trecho ${nx+1} de ${L.length}</div><b style="font-size:20px">${esc(L[nx].b.name)}</b><div class="small mut">saindo de ${esc(L[nx].a.name)}</div><div class="row" style="margin-top:10px"><a class="btn blue" href="${esc(navURL(L[nx].b.addr))}" target="_blank" rel="noopener">Navegar daqui até lá</a><a class="btn" href="${esc(legURL(L[nx].a.addr,L[nx].b.addr))}" target="_blank" rel="noopener">Ver trecho</a></div></div>`:''}
-  <div class="small" style="margin-top:10px;font-weight:600">Trechos</div><ol class="stops">${L.map((l,i)=>`<li><span>${legDone(l,d.date)?'<b style="color:var(--gtxt)">✓</b> ':''}${i+1}. ${esc(l.a.name)} → ${esc(l.b.name)}</span><a class="ib" style="display:grid;place-items:center;text-decoration:none" href="${esc(legURL(l.a.addr,l.b.addr))}" target="_blank" rel="noopener">Rota</a></li>`).join('')}</ol>`}
+  const gpsBtns=l=>`<span class="sb"><a class="ib go" href="${esc(legURL(l.a.addr,l.b.addr))}" target="_blank" rel="noopener">Maps</a><a class="ib" style="background:#33ccff;color:#062a3a" href="${esc(wazeURL(l.b.addr))}" target="_blank" rel="noopener">Waze</a></span>`;
+  return `${hoje&&nx>=0?`<div class="card" style="border-color:var(--blue)"><div class="small mut">Próximo trecho ${nx+1} de ${L.length}</div><b style="font-size:20px">${esc(L[nx].b.name)}</b><div class="small mut">saindo de ${esc(L[nx].a.name)}</div><div class="small" style="margin-top:2px">${esc(L[nx].b.addr)}</div><div class="row" style="margin-top:10px"><a class="btn blue" href="${esc(legURL(L[nx].a.addr,L[nx].b.addr))}" target="_blank" rel="noopener">GPS no Google Maps</a><a class="btn" style="background:#33ccff;color:#062a3a" href="${esc(wazeURL(L[nx].b.addr))}" target="_blank" rel="noopener">GPS no Waze</a></div></div>`:''}
+  <div class="small" style="margin-top:10px;font-weight:600">Trechos para o GPS</div>${L.map((l,i)=>`<div class="leg2"><span>${legDone(l,d.date)?'<b style="color:var(--gtxt)">✓</b> ':''}<b>${i+1}.</b> ${esc(l.a.name)} → <b>${esc(l.b.name)}</b><br><span class="small mut">${esc(l.b.addr)}</span></span>${gpsBtns(l)}</div>`).join('')}`}
 const dayRoute=d=>{const w=stopsOf(d).filter(s=>s.addr).map(s=>s.addr).slice(0,9);return 'https://www.google.com/maps/dir/?api=1&origin='+encodeURIComponent(d.from)+'&destination='+encodeURIComponent(d.to)+(w.length?'&waypoints='+encodeURIComponent(w.join('|')):'')+'&travelmode=driving'};
 function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove('on'),2800)}
 
@@ -177,8 +184,9 @@ function vHoje(){const w=where(),L=w.L;
   ${w.phase==='on'&&(bk===null||bk>=2)&&(S.visits.length||S.exp.length>3)?`<div class="warn">${bk===null?'Você ainda não fez backup.':'Último backup há '+bk+' dias.'} Os dados ficam só neste iPhone. <a href="#arquivo">Fazer backup</a></div>`:''}
   <div class="signwrap"><div class="sign"><div><div class="k">${moving?'Próximo destino':'Hoje em'}</div><div class="dest">${esc(d.to||d.title||'—')}</div><div class="meta">${esc(d.drive||'')}${d.stay?`${d.drive?' · ':''}Pernoite: ${esc(d.stay)}`:''}</div></div>
   <svg viewBox="0 0 80 80" aria-hidden="true"><path d="M18 62 L56 24" stroke="#fff" stroke-width="10"/><path d="M30 20 H60 V50" fill="none" stroke="#fff" stroke-width="10"/></svg></div><i class="post a"></i><i class="post b"></i></div>
+  ${(()=>{const end=w.t+'T23:59';const due=(S.notes||[]).filter(n=>n.when&&!n.done&&n.when<=end).sort((a,b)=>a.when.localeCompare(b.when));return due.length?`<div class="card" style="border-color:var(--red)"><h3>Lembretes de hoje</h3>${due.map(noteItem).join('')}</div>`:''})()}
   ${statusBox()}
-  <button class="btn red" style="width:100%" data-act="exp">+ Gasto</button>${(()=>{const L=legsOf(d),nx=L.findIndex(l=>!legDone(l,d.date));return nx>=0?legsHTML(d,true).split('<div class="small" style="margin-top:10px;font-weight:600">Trechos</div>')[0]:''})()}
+  <button class="btn red" style="width:100%" data-act="exp">+ Gasto</button>${(()=>{const L=legsOf(d),nx=L.findIndex(l=>!legDone(l,d.date));return nx>=0?legsHTML(d,true).split('<div class="small" style="margin-top:10px;font-weight:600">Trechos para o GPS</div>')[0]:''})()}
   <div class="card"><h3>${esc(d.title||'Programação')}</h3>${moving?`<p class="mut small" style="margin:4px 0 0">${esc(d.from)} → ${esc(d.to)}</p>`:''}
    ${st.length?`<ul class="stops">${st.map(s=>{const v=visitOf(s.name,d.date);return `<li><span>${v?'<b style="color:var(--gtxt)">✓</b> ':''}${esc(s.name)}${v?` <span class="small mut">${esc(hm(v.arr))}${v.dep?' · '+esc(dur(ms(v.arr,v.dep))):' · agora'}</span>`:''}</span>${v?'':`<button class="ib go" data-act="arrq" data-place="${esc(s.name)}">Cheguei</button>`}</li>`}).join('')}</ul>`:''}
    ${legsHTML(d,false)}${d.notes?`<p class="small mut" style="white-space:pre-line">${esc(d.notes)}</p>`:''}
@@ -190,7 +198,7 @@ function vRoteiro(){const L=days(),t=todayISO();const seq=[];L.forEach(d=>{if(d.
   const full=seq.length>2?'https://www.google.com/maps/dir/?api=1&origin='+encodeURIComponent(seq[0])+'&destination='+encodeURIComponent(seq[seq.length-1])+'&waypoints='+encodeURIComponent(seq.slice(1,-1).slice(0,9).join('|'))+'&travelmode=driving':'';
   return `<div class="row" style="margin-bottom:10px"><label class="btn blue">Importar planilha<input type="file" id="impx" accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv" hidden></label><button class="btn" data-act="xlx">Baixar em Excel</button></div>
   <div class="row" style="margin-bottom:6px">${full?`<a class="btn blue" href="${esc(full)}" target="_blank" rel="noopener">Rota completa no Maps</a>`:''}<button class="btn pri" data-act="day">+ Dia</button></div>
-  <p class="small mut">Tempos de estrada são estimativas de carro; o RV leva mais. Cada trecho abre separado no Maps: saída → parada → parada → destino. Paradas sem endereço não viram trecho.</p>
+  <p class="small mut">Trechos = Saindo de → cada ponto com endereço, na ordem → Destino. Cada trecho tem botão para abrir no GPS (Google Maps ou Waze). Ponto sem endereço é só lembrete. Tempos de estrada são estimativas de carro.</p>
   ${L.map((d,i)=>{const st=stopsOf(d);return `<article class="day ${d.date===t?'now':''}"><div class="d">${esc(fd(d.date,{day:'2-digit'}))}<small>${esc(fd(d.date,{month:'short'}))} · ${esc(fd(d.date,{weekday:'short'}))}</small></div>
    <div><h3>${esc(d.title||'Dia '+(i+1))}</h3>${d.from&&d.to&&d.from!==d.to?`<div class="small mut">${esc(d.from)} → ${esc(d.to)}</div>`:''}${d.drive?`<span class="drive">${esc(d.drive)}</span>`:''}
    ${st.length?`<ol class="stops">${st.map((s,j)=>{const v=visitOf(s.name,d.date);return `<li><span>${v?'<b style="color:var(--gtxt)">✓</b> ':''}${esc(s.name)}${s.addr?' <span class="tag">na rota</span>':''}${v&&v.dep?` <span class="small mut">${esc(dur(ms(v.arr,v.dep)))}</span>`:''}</span><span class="sb"><button class="ib" data-act="mv" data-id="${esc(d.id)}" data-i="${j}" data-dir="-1" aria-label="Subir" ${j?'':'disabled'}>↑</button><button class="ib" data-act="mv" data-id="${esc(d.id)}" data-i="${j}" data-dir="1" aria-label="Descer" ${j<st.length-1?'':'disabled'}>↓</button><button class="ib" data-act="rm" data-id="${esc(d.id)}" data-i="${j}" aria-label="Remover">✕</button></span></li>`}).join('')}</ol>`:''}
@@ -219,6 +227,20 @@ function vDiario(){const dates=[...new Set(vis().map(v=>(v.arr||'').slice(0,10))
   return `${statusBox()}<p class="small mut">Cada chegada guarda a hora e o GPS. O tempo entre sair de um lugar e chegar no próximo conta como estrada.</p>
   ${dates.length?dates.map(dt=>{const{V,at,road}=dayLog(dt);return `<div class="grp">${esc(fd(dt,{weekday:'long',day:'2-digit',month:'long'}))}</div><div class="small mut">Nos lugares ${esc(dur(at))} · estrada ${esc(dur(road))}</div>`+V.map((v,i)=>{const p=V[i-1];return (p&&p.dep?`<div class="leg">estrada ${esc(dur(ms(p.dep,v.arr)))}</div>`:'')+`<div class="vis" data-act="vis" data-id="${esc(v.id)}"><div class="h">${esc(hm(v.arr))}<small>${v.dep?'até '+esc(hm(v.dep)):'agora'}</small></div><div><b>${esc(v.place)}</b> <span class="small mut">${v.dep?esc(dur(ms(v.arr,v.dep))):'em andamento'}</span>${v.note?`<div class="small" style="white-space:pre-line">${esc(v.note)}</div>`:''}${v.photo?`<img data-ph="${esc(v.photo)}" alt="" hidden>`:''}<div class="small mut">${v.arrGps?`GPS ±${esc(v.arrGps.acc)} m`:'sem GPS'}</div></div></div>`}).join('')}).join(''):'<div class="empty">Nenhuma chegada registrada ainda.</div>'}`}
 
+function noteWhen(n){if(!n.when)return '';const late=!n.done&&n.when<iso(Date.now());return `<span class="${late?'late':'mut'} small">${late?'Atrasado · ':''}${esc(fd(n.when,{weekday:'short',day:'2-digit',month:'short'}))} ${esc(hm(n.when))}</span>`}
+const noteItem=n=>{const [t,...r]=String(n.text||'').split('\n');return `<div class="note ${n.done?'done':''}"><button class="ck ${n.done?'on':''}" data-act="ntog" data-id="${esc(n.id)}" aria-label="Concluir">${n.done?'✓':''}</button><div class="tx" data-act="note" data-id="${esc(n.id)}"><b>${esc(t)}</b>${r.length?'<br>'+esc(r.join('\n')):''}${n.when?'<br>'+noteWhen(n):''}</div></div>`};
+function vNotas(){const N=S.notes||[];const rem=N.filter(n=>n.when&&!n.done).sort((a,b)=>a.when.localeCompare(b.when));const notes=N.filter(n=>!n.when&&!n.done).sort((a,b)=>(b.ts||0)-(a.ts||0));const done=N.filter(n=>n.done).sort((a,b)=>(b.ts||0)-(a.ts||0));
+  return `<button class="btn pri huge" style="width:100%" data-act="note">+ Anotação ou lembrete</button>
+  <h3 style="margin-top:18px">Lembretes</h3>${rem.length?rem.map(noteItem).join(''):'<p class="small mut">Nenhum lembrete com data.</p>'}
+  <h3 style="margin-top:18px">Anotações</h3>${notes.length?notes.map(noteItem).join(''):'<p class="small mut">Nenhuma anotação.</p>'}
+  ${done.length?`<details style="margin-top:18px"><summary class="mut">Concluídos (${done.length})</summary>${done.map(noteItem).join('')}</details>`:''}
+  <p class="small mut" style="margin-top:16px">O app não consegue tocar alarme sozinho. Para ser avisado na hora, use “Adicionar ao calendário” no lembrete: o alerta fica no Calendário do iPhone.</p>`}
+function openNote(id){const n=(S.notes||[]).find(x=>x.id===id)||{};kind='note';editId=n.id||'';
+  open(`<h2>${n.id?'Editar':'Nova anotação'}</h2><label class="f" for="nt">Texto</label><textarea id="nt" name="text" style="min-height:140px" placeholder="Primeira linha vira o título">${esc(n.text||'')}</textarea>
+  <label class="f" for="nw">Lembrar em (opcional)</label><input id="nw" name="when" type="datetime-local" value="${esc(n.when||'')}">
+  ${n.id&&n.when?`<button class="btn" type="button" data-act="ics" style="width:100%;margin-top:10px">Adicionar ao calendário do iPhone</button>`:''}${foot(!!n.id)}`);setTimeout(()=>{const t=$('#nt');if(t&&!n.id)t.focus()},60)}
+function icsFor(n){const p=s=>String(s).replace(/\\/g,'\\\\').replace(/;/g,'\;').replace(/,/g,'\\,').replace(/\n/g,'\\n');const dt=s=>s.replace(/[-:]/g,'')+'00';const end=iso(new Date(n.when).getTime()+15*6e4);const [t,...r]=String(n.text).split('\n');
+  return ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//ViagemRV//PT','BEGIN:VEVENT','UID:'+n.id+'@viagem-rv','DTSTAMP:'+new Date().toISOString().replace(/[-:]/g,'').slice(0,15)+'Z','DTSTART:'+dt(n.when),'DTEND:'+dt(end),'SUMMARY:'+p(t),'DESCRIPTION:'+p(r.join('\n')),'BEGIN:VALARM','TRIGGER:-PT0M','ACTION:DISPLAY','DESCRIPTION:'+p(t),'END:VALARM','END:VEVENT','END:VCALENDAR'].join('\r\n')}
 function vArquivo(){const sa=window.matchMedia('(display-mode: standalone)').matches||navigator.standalone;const bk=S.cfg.lastBackup;
   return `${sa?'':`<div class="card"><h3>Instalar no iPhone</h3><p class="small">No Safari, toque em Compartilhar (quadrado com seta) e depois em <b>Adicionar à Tela de Início</b>. Depois use sempre pelo ícone verde: os dados ficam guardados no app instalado, não no Safari.</p></div>`}
   <div class="card"><h3>Relatório da viagem</h3><p class="small mut">Arquivo único (abre no navegador do PC e imprime em PDF) com resumo, dia a dia, tempos, gastos e fotos dos cupons.</p><button class="btn pri" style="width:100%" data-act="report">Baixar relatório</button>
@@ -230,7 +252,7 @@ function vArquivo(){const sa=window.matchMedia('(display-mode: standalone)').mat
   <div class="card"><h3>Câmbio e orçamento</h3><div class="two"><div><label class="f" for="rt">R$ por US$</label><input id="rt" inputmode="decimal" value="${esc(String(S.cfg.rate).replace('.',','))}" data-cfg="rate"></div><div><label class="f" for="bd">Orçamento (US$)</label><input id="bd" inputmode="decimal" value="${S.cfg.budget?esc(String(S.cfg.budget).replace('.',',')):''}" placeholder="opcional" data-cfg="budget"></div></div><p class="small mut">Use a taxa efetiva que você paga (com IOF no cartão brasileiro).</p></div>
   <p class="small mut" id="stor"></p>`}
 
-function render(){const v=(location.hash||'#hoje').slice(1);const V={hoje:vHoje,roteiro:vRoteiro,gastos:vGastos,diario:vDiario,arquivo:vArquivo}[v]||vHoje;
+function render(){const v=(location.hash||'#hoje').slice(1);const V={hoje:vHoje,roteiro:vRoteiro,gastos:vGastos,diario:vDiario,notas:vNotas,arquivo:vArquivo}[v]||vHoje;
   const keep=document.activeElement&&document.activeElement.dataset&&document.activeElement.dataset.cfg;if(keep)return;
   $('#view').innerHTML=V();document.querySelectorAll('#nav a').forEach(a=>a.classList.toggle('on',a.dataset.v===(V===vHoje?'hoje':v)));
   $('#clock').textContent=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});hydratePhotos();
@@ -263,11 +285,13 @@ function openVis(id){const v=S.visits.find(x=>x.id===id);if(!v)return;kind='vis'
 function openDay(id){const d=S.days.find(x=>x.id===id)||{};kind='day';editId=d.id||'';const L=days(),last=L[L.length-1];
   open(`<h2>${d.id?'Editar dia':'Novo dia'}</h2><label class="f" for="dd">Data</label><input id="dd" name="date" type="date" value="${esc(d.date||'')}">
   <label class="f" for="dt">Título</label><input id="dt" name="title" value="${esc(d.title||'')}">
-  <div class="two"><div><label class="f" for="df">Saindo de</label><input id="df" name="from" value="${esc(d.from||(!d.id&&last?.to)||'')}"></div><div><label class="f" for="dto">Destino</label><input id="dto" name="to" value="${esc(d.to||'')}"></div></div>
+  <label class="f" for="df">Saindo de (endereço onde o dia começa)</label><input id="df" name="from" value="${esc(d.from||(!d.id&&last?.to)||'')}" placeholder="Ex.: Orlando International Airport, Orlando, FL">
   <label class="f" for="dr">Estrada (tempo e distância)</label><input id="dr" name="drive" value="${esc(d.drive||'')}" placeholder="≈ 3h · 180 mi">
   <label class="f" for="ds">Pernoite</label><input id="ds" name="stay" value="${esc(d.stay||'')}">
-  <label class="f" for="dp">Paradas (uma por linha; para entrar na rota: Nome || endereço)</label><textarea id="dp" name="stops">${esc(d.stops||'')}</textarea>
+  <label class="f">Pontos do dia, em ordem</label><p class="small mut" style="margin:0">Com endereço vira trecho de GPS. Sem endereço fica como lembrete.</p><div id="pts">${(stopsOf(d).length?stopsOf(d):[{name:'',addr:''}]).map(ptRow).join('')}</div><button class="btn" type="button" data-act="addpt" style="margin-top:8px">+ Ponto</button>
+  <label class="f" for="dto">Destino final do dia (endereço)</label><input id="dto" name="to" value="${esc(d.to||'')}" placeholder="Ex.: Kia Center, Orlando, FL">
   <label class="f" for="dn">Observações</label><textarea id="dn" name="notes">${esc(d.notes||'')}</textarea>${foot(!!d.id)}`)}
+const ptRow=s=>`<div class="pt"><input name="pn" placeholder="Nome (ex.: Casa da Dani)" value="${esc(s.name)}"><button type="button" class="ib" data-act="delpt" aria-label="Remover ponto">✕</button><input name="pa" placeholder="Endereço para o GPS (opcional)" value="${esc(s.addr)}"></div>`;
 function openStop(id){const d=S.days.find(x=>x.id===id);if(!d)return;kind='stop';editId=id;const st=stopsOf(d);
   open(`<h2>Nova parada</h2><p class="mut small" style="margin:4px 0 0">${esc(fd(d.date,{weekday:'long',day:'2-digit',month:'long'}))} · ${esc(d.title||'')}</p>
   <label class="f" for="sn">Nome</label><input id="sn" name="name" placeholder="Ex.: Buc-ee's, mirante">
@@ -282,7 +306,8 @@ form.addEventListener('submit',async ev=>{ev.preventDefault();const o=Object.fro
     if(kind==='exp'){const a=num(o.amt);if(!a)return msg('Informe o valor.');const ph=await storePhoto();const e={id:editId||uid(),amt:a,cur:o.cur,cat:o.cat||'out',desc:(o.desc||'').trim(),date:o.date,pay:o.pay,photo:ph||'',ts:Date.now()};const i=S.exp.findIndex(x=>x.id===e.id);if(i>=0)S.exp[i]=e;else S.exp.push(e);await save();toast('Gasto salvo')}
     if(kind==='arr'){const pl=(o.place||'').trim();if(!pl)return msg('Diga onde você chegou.');const now=iso(Date.now());const ov=openVisit();if(ov){ov.dep=now;ov.depAuto=true}const ph=await storePhoto();S.visits.push({id:uid(),place:pl,arr:now,dep:'',note:(o.note||'').trim(),photo:ph||'',arrGps:gpsFix||null});await save();toast('Chegada em '+pl+' às '+hm(now))}
     if(kind==='vis'){const v=S.visits.find(x=>x.id===editId);if(!v)return;if(o.dep&&o.dep<o.arr)return msg('A saída não pode ser antes da chegada.');v.place=(o.place||'').trim()||v.place;v.arr=o.arr||v.arr;v.dep=o.dep||'';v.note=(o.note||'').trim();v.photo=await storePhoto()||'';await save();toast('Atualizado')}
-    if(kind==='day'){if(!o.date)return msg('Informe a data.');const d={id:editId||('d'+o.date.replace(/-/g,'')+uid().slice(-3)),date:o.date,title:o.title.trim(),from:o.from.trim(),to:o.to.trim(),drive:o.drive.trim(),stay:o.stay.trim(),stops:o.stops,notes:o.notes};const i=S.days.findIndex(x=>x.id===d.id);if(i>=0)S.days[i]=d;else S.days.push(d);await save();toast('Dia salvo')}
+    if(kind==='day'){if(!o.date)return msg('Informe a data.');const F=new FormData(form),pn=F.getAll('pn'),pa=F.getAll('pa');const stops=pn.map((n,i)=>{const nm=String(n).trim().replace(/\|/g,'/'),ad=String(pa[i]||'').trim().replace(/\|/g,'/');return nm||ad?(nm||ad)+(ad?' || '+ad:''):''}).filter(Boolean).join('\n');const d={id:editId||('d'+o.date.replace(/-/g,'')+uid().slice(-3)),date:o.date,title:o.title.trim(),from:o.from.trim(),to:o.to.trim(),drive:o.drive.trim(),stay:o.stay.trim(),stops,notes:o.notes};const i=S.days.findIndex(x=>x.id===d.id);if(i>=0)S.days[i]=d;else S.days.push(d);await save();toast('Dia salvo')}
+    if(kind==='note'){const tx=(o.text||'').trim();if(!tx)return msg('Escreva alguma coisa.');S.notes=S.notes||[];const old=S.notes.find(x=>x.id===editId);const n={id:editId||uid(),text:tx,when:o.when||'',done:old?old.done:false,ts:Date.now()};const i=S.notes.findIndex(x=>x.id===n.id);if(i>=0)S.notes[i]=n;else S.notes.push(n);await save();toast(n.when?'Lembrete salvo':'Anotação salva');close();return}
     if(kind==='impx'){if(!importExp||!importExp.length)return close();const n=importExp.length;S.exp.push(...importExp);importExp=null;await save();toast(n+' gasto(s) importado(s)');close();return}
     if(kind==='imp'){if(!importDays)return;S.days=importDays;importDays=null;await save();toast('Roteiro atualizado');close();location.hash='#roteiro';return}
     if(kind==='stop'){const d=S.days.find(x=>x.id===editId);const nm=(o.name||'').trim().replace(/\|/g,'/'),ad=(o.addr||'').trim().replace(/\|/g,'/');if(!d||!nm)return msg('Informe o nome.');const L=lines(d.stops);L.splice(Math.min(+o.pos||0,L.length),0,nm+(ad?' || '+ad:''));await saveDay(d,L);toast('Parada adicionada')}
@@ -400,12 +425,13 @@ table{width:100%;border-collapse:collapse;margin:6px 0}td{padding:6px 8px;border
 <div class="k"><div>Total gasto<b>${esc(money(T.tot))}</b>${esc(money(T.tot*rate(),'BRL'))}</div><div>Lugares visitados<b>${V.length}</b>${esc(dur(at))} nos lugares</div><div>Na estrada<b>${esc(dur(road))}</b>entre paradas do mesmo dia</div><div>Câmbio usado<b>R$ ${esc(rate().toFixed(2).replace('.',','))}</b>por US$</div></div>
 <h2>Gastos por categoria</h2>${tb(T.by)}<h2 style="margin-top:20px">Por forma de pagamento</h2>${tb(T.bp)}
 ${pre.length?`<section class="day"><h2>Antes da viagem</h2><table>${pre.map(e=>`<tr><td>${esc(e.date)}</td><td>${esc(e.desc)}</td><td class="n">${esc(money(num(e.amt),e.cur))}</td><td class="n">${esc(e.cur==='BRL'?money(usd(e)):money(brl(e),'BRL'))}</td></tr>`).join('')}</table></section>`:''}
-${dayBlocks}</body></html>`;
+${dayBlocks}
+${(S.notes||[]).length?`<section class="day"><h2>Anotações e lembretes</h2><table>${[...S.notes].sort((a,b)=>(a.when||'9').localeCompare(b.when||'9')).map(n=>`<tr><td class="n">${n.when?esc(fd(n.when,{day:'2-digit',month:'short'}))+' '+esc(hm(n.when)):''}</td><td style="white-space:pre-line">${n.done?'✓ ':''}${esc(n.text)}</td></tr>`).join('')}</table></section>`:''}</body></html>`;
   return new Blob([html],{type:'text/html'})}
 async function backup(){const photos={};for(const k of await idb.keys('photos'))photos[k]=await photoData(k,0);S.cfg.lastBackup=iso(Date.now());
   const blob=new Blob([JSON.stringify({app:'viagem-rv',v:1,saved:S.cfg.lastBackup,state:S,photos})],{type:'application/json'});const ok=await deliver(blob,'backup-viagem-'+S.cfg.lastBackup.replace(/[:T]/g,'-')+'.json');if(ok)await save();else S.cfg.lastBackup=''}
 async function restore(file){try{const j=JSON.parse(await file.text());if(j.app!=='viagem-rv'||!j.state)throw new Error('arquivo não é um backup deste app');
-  await idb.clear('photos');for(const[k,u]of Object.entries(j.photos||{})){const b=await (await fetch(u)).blob();await idb.set('photos',k,b)}S=j.state;await save();toast('Backup restaurado')}catch(e){toast('Não foi possível restaurar: '+(e.message||e))}}
+  await idb.clear('photos');for(const[k,u]of Object.entries(j.photos||{})){const b=await (await fetch(u)).blob();await idb.set('photos',k,b)}S=j.state;S.notes=S.notes||[];S.visits=S.visits||[];await save();toast('Backup restaurado')}catch(e){toast('Não foi possível restaurar: '+(e.message||e))}}
 
 /* ================= eventos ================= */
 let delArm=0;const stamp=()=>new Date().toISOString().slice(0,10);
@@ -420,9 +446,14 @@ document.addEventListener('click',async ev=>{const el=ev.target.closest('[data-a
   else if(a==='close')close();
   else if(a==='ai')readReceipt(el);
   else if(a==='aikey'){const v=($('#aik').value||'').trim();if(v&&!/^sk-ant-/.test(v)){toast('A chave começa com sk-ant-');return}aiKey=v;try{await idb.set('kv','apikey',v)}catch(e){}toast(v?'Chave salva neste iPhone':'Chave removida');render()}
+  else if(a==='note')openNote(el.dataset.id);
+  else if(a==='ntog'){const n=(S.notes||[]).find(x=>x.id===el.dataset.id);if(n){n.done=!n.done;n.ts=Date.now();await save()}}
+  else if(a==='ics'){const n=(S.notes||[]).find(x=>x.id===editId);if(!n||!n.when)return;await deliver(new Blob([icsFor(n)],{type:'text/calendar'}),'lembrete.ics')}
+  else if(a==='addpt'){$('#pts').insertAdjacentHTML('beforeend',ptRow({name:'',addr:''}));const ins=$('#pts').querySelectorAll('input[name=pn]');ins[ins.length-1].focus()}
+  else if(a==='delpt'){const r=el.closest('.pt');if($('#pts').children.length>1)r.remove();else r.querySelectorAll('input').forEach(i=>i.value='')}
   else if(a==='pick')form.elements['place'].value=el.dataset.v;
   else if(a==='del'){if(Date.now()-delArm>4000){delArm=Date.now();el.textContent='Toque de novo para excluir';return}
-    if(kind==='exp')S.exp=S.exp.filter(x=>x.id!==editId);if(kind==='vis')S.visits=S.visits.filter(x=>x.id!==editId);if(kind==='day')S.days=S.days.filter(x=>x.id!==editId);if(curPhoto&&kind!=='day')idb.del('photos',curPhoto).catch(()=>{});await save();toast('Excluído');close()}
+    if(kind==='note')S.notes=(S.notes||[]).filter(x=>x.id!==editId);if(kind==='exp')S.exp=S.exp.filter(x=>x.id!==editId);if(kind==='vis')S.visits=S.visits.filter(x=>x.id!==editId);if(kind==='day')S.days=S.days.filter(x=>x.id!==editId);if(curPhoto&&kind!=='day')idb.del('photos',curPhoto).catch(()=>{});await save();toast('Excluído');close()}
   else if(a==='mv'||a==='rm'){const d=S.days.find(x=>x.id===el.dataset.id);if(!d)return;const L=lines(d.stops),i=+el.dataset.i;
     if(a==='rm'&&!el.classList.contains('arm')){el.classList.add('arm');el.textContent='Remover?';setTimeout(()=>{if(el.isConnected){el.classList.remove('arm');el.textContent='✕'}},3500);return}
     if(a==='mv'){const j=i+(+el.dataset.dir);if(j<0||j>=L.length)return;[L[i],L[j]]=[L[j],L[i]]}else L.splice(i,1);await saveDay(d,L)}
@@ -446,7 +477,7 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden&&!sheet.cl
 
 /* ================= início ================= */
 (async()=>{try{const st=await idb.get('kv','state');if(st)S=st;else if(self.SEED){S=JSON.parse(JSON.stringify(self.SEED));await idb.set('kv','state',S)}}catch(e){toast('Este navegador não permite guardar dados')}
-  S.visits=S.visits||[];S.cfg=S.cfg||{rate:5.87};try{aiKey=(await idb.get('kv','apikey'))||''}catch(e){}render();
+  S.visits=S.visits||[];S.notes=S.notes||[];S.cfg=S.cfg||{rate:5.87};try{aiKey=(await idb.get('kv','apikey'))||''}catch(e){}render();
   try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}
   if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{})})();
 }
